@@ -1,0 +1,1 @@
+Giải nén file zip Hacker News Who is hiring (Kaggle) vào thư mục này: phải có jobs_2018_2023.csv và parsed_jobs_2018_2023.csv.

@@ -1,0 +1,1 @@
+Giải nén archive.zip (LinkedIn Job Postings, Kaggle) vào thư mục này: phải có postings.csv và thư mục jobs/.
