@@ -8,3 +8,7 @@ data/raw/**/*.csv
 storage/
 .pytest_cache/
 data/vn/*full.csv
+<<<<<<< HEAD
+=======
+.streamlit/secrets.toml
+>>>>>>> 9e247f4aa165ec41a09ccc829594fc364b0fb5bd
