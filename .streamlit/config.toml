@@ -1,7 +1,7 @@
 [server]
-maxUploadSize = 200
-maxMessageSize = 200
-runOnSave = false
+maxUploadSize = 1024
+maxMessageSize = 1024
+runOnSave = true
 
 [theme]
 base = "light"
