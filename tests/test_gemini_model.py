@@ -82,3 +82,39 @@ def test_loi_khac_404_khong_doi_model():
     with pytest.raises(Boom):
         gc.call_with_model_fallback(fake, "gemini-2.5-flash", fn)
     assert gc._RESOLVED == {}
+
+
+class Overloaded(Exception):
+    code = 503
+
+
+def test_qua_tai_503_thu_model_khac_nhung_khong_nho():
+    """503 high demand: thử model dự phòng 1 lần; lần sau vẫn thử lại model cấu hình (quá tải là tạm thời)."""
+    fake = SimpleNamespace(models=FakeModels(["gemini-2.5-flash", "gemini-2.5-flash-lite"]))
+    tried = []
+
+    def fn(m):
+        tried.append(m)
+        if m == "gemini-2.5-flash":
+            raise Overloaded("503 UNAVAILABLE. This model is currently experiencing high demand.")
+        return f"OK {m}"
+
+    result, used = gc.call_with_model_fallback(fake, "gemini-2.5-flash", fn)
+    assert (result, used) == ("OK gemini-2.5-flash-lite", "gemini-2.5-flash-lite")
+    assert tried == ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    assert gc._RESOLVED == {}
+
+
+def test_qua_tai_ca_model_du_phong_bao_loi_than_thien(monkeypatch):
+    class AllBusy(FakeModels):
+        def generate_content(self, model, contents, config=None):
+            self.calls.append(model)
+            raise Overloaded("503 UNAVAILABLE high demand")
+
+    fake = SimpleNamespace(models=AllBusy(["gemini-2.5-flash", "gemini-2.5-flash-lite"]))
+    client = gc.GeminiClient(api_key="khoa-gia", model="gemini-2.5-flash")
+    monkeypatch.setattr(client, "_get", lambda: fake)
+    with pytest.raises(gc.GeminiError) as ei:
+        client.generate([{"role": "user", "parts": [{"text": "x"}]}], "system")
+    assert "quá tải" in ei.value.user_message
+    assert len(fake.models.calls) == 2      # model cấu hình + đúng 1 model dự phòng, không lặp vô hạn

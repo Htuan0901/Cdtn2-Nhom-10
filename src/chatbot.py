@@ -224,7 +224,10 @@ def ask_gemini(api_key: str, model: str, history: list[dict], user_msg: str, dat
     except ImportError as e:  # pragma: no cover
         raise GeminiError("Chưa cài thư viện google-genai. Chạy: pip install google-genai") from e
 
-    client = genai.Client(api_key=api_key)
+    # Giới hạn thời gian chờ mỗi lần gọi (mặc định thư viện có thể chờ rất lâu khi Google quá tải)
+    from src.analytics.config import AI_TIMEOUT_SECONDS
+
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=AI_TIMEOUT_SECONDS * 1000))
     contents = []
     for m in history[-20:]:
         role = "user" if m["role"] == "user" else "model"
@@ -243,11 +246,11 @@ def ask_gemini(api_key: str, model: str, history: list[dict], user_msg: str, dat
         tools = [types.Tool(google_search=types.GoogleSearch())]
     elif use_tools and data_context:
         tools = DATA_TOOLS
-        afc = types.AutomaticFunctionCallingConfig(maximum_remote_calls=10)
+        afc = types.AutomaticFunctionCallingConfig(maximum_remote_calls=6)
 
     cfg = types.GenerateContentConfig(system_instruction=sys_prompt, temperature=temperature, tools=tools,
                                       automatic_function_calling=afc)
-    from src.analytics.ai.gemini_client import call_with_model_fallback, is_model_not_found
+    from src.analytics.ai.gemini_client import call_with_model_fallback, is_model_not_found, is_overloaded
 
     try:
         resp, used_model = call_with_model_fallback(
@@ -258,6 +261,12 @@ def ask_gemini(api_key: str, model: str, history: list[dict], user_msg: str, dat
             raise GeminiError("API key không hợp lệ. Hãy kiểm tra lại GEMINI_API_KEY trong file .env.") from e
         if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
             raise GeminiError("Đã vượt giới hạn số lần gọi (quota) của API key. Vui lòng đợi một lát rồi thử lại.") from e
+        if is_overloaded(e):
+            raise GeminiError("Gemini đang quá tải phía Google (503), đã thử cả model dự phòng. Vui lòng đợi 1–2 phút rồi hỏi lại, "
+                              "hoặc chọn model khác ở thanh bên.") from e
+        if "timeout" in msg.lower() or "timed out" in msg.lower() or "deadline" in msg.lower():
+            raise GeminiError(f"Gemini không phản hồi sau {AI_TIMEOUT_SECONDS} giây (thường do quá tải). Vui lòng hỏi lại sau ít phút, "
+                              "hoặc chọn model nhẹ hơn (flash-lite) ở thanh bên.") from e
         if is_model_not_found(e):
             raise GeminiError(f"Không tìm thấy model '{model}' và không tự chọn được model thay thế. Hãy đặt GEMINI_MODEL "
                               "bằng một model có trong Google AI Studio (Secrets trên web, .env trên máy).") from e

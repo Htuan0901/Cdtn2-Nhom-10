@@ -49,6 +49,8 @@ def _map_error(exc: Exception) -> GeminiError:
     if is_model_not_found(exc):
         return GeminiError("Không tìm thấy model đã cấu hình (GEMINI_MODEL) và không tự chọn được model thay thế. "
                            f"Hãy đặt GEMINI_MODEL bằng một model có trong Google AI Studio. Chi tiết: {msg[:160]}", "model")
+    if is_overloaded(exc):
+        return GeminiError("Gemini đang quá tải phía Google (503), đã thử cả model dự phòng. Vui lòng đợi 1–2 phút rồi hỏi lại.", "server")
     if code and int(code) >= 500:
         return GeminiError("Máy chủ Gemini đang gặp sự cố tạm thời. Vui lòng thử lại sau.", "server")
     if "Timeout" in name or "timeout" in msg.lower():
@@ -70,6 +72,13 @@ def is_model_not_found(exc: Exception) -> bool:
     code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
     msg = str(exc)
     return code == 404 or "NOT_FOUND" in msg or "is not found" in msg
+
+
+def is_overloaded(exc: Exception) -> bool:
+    """Model đang quá tải phía Google (503 UNAVAILABLE / high demand): lỗi tạm thời, nên thử model khác."""
+    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    msg = str(exc)
+    return code == 503 or "UNAVAILABLE" in msg or "high demand" in msg or "overloaded" in msg.lower()
 
 
 def _version(name: str) -> float:
@@ -115,15 +124,18 @@ def list_generate_models(client) -> list[str]:
 
 
 def call_with_model_fallback(client, model: str, fn):
-    """Gọi fn(model). Nếu model không tồn tại (404) thì tự chọn model thay thế và gọi lại đúng 1 lần.
+    """Gọi fn(model). Nếu model không tồn tại (404) hoặc đang quá tải (503) thì tự chọn model thay thế
+    và gọi lại đúng 1 lần.
 
     Trả về (kết quả, model_đã_dùng). Ngoại lệ gốc được ném lại nếu không tìm được model thay thế.
+    Model thay thế chỉ được nhớ cho lần sau khi model cũ không còn (404); quá tải là tạm thời nên không nhớ.
     """
     use = _RESOLVED.get(model, model)
     try:
         return fn(use), use
     except Exception as exc:  # noqa: BLE001
-        if not is_model_not_found(exc):
+        missing = is_model_not_found(exc)
+        if not (missing or is_overloaded(exc)):
             raise
         try:
             alt = choose_fallback_model(list_generate_models(client), wanted=use)
@@ -131,9 +143,10 @@ def call_with_model_fallback(client, model: str, fn):
             alt = None
         if not alt:
             raise exc
-        log.warning("Model %s không còn, chuyển sang %s", use, alt)
+        log.warning("Model %s %s, chuyển sang %s", use, "không còn" if missing else "quá tải", alt)
         result = fn(alt)
-        _RESOLVED[model] = alt
+        if missing:
+            _RESOLVED[model] = alt
         return result, alt
 
 
