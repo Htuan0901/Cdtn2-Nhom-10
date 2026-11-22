@@ -28,8 +28,13 @@ class FakeModels:
         return SimpleNamespace(text=f"OK từ {model}", candidates=[], automatic_function_calling_history=[])
 
 
+SLEPT: list[float] = []
+
+
 @pytest.fixture(autouse=True)
-def _clear_cache():
+def _clear_cache(monkeypatch):
+    SLEPT.clear()
+    monkeypatch.setattr(gc, "_sleep", SLEPT.append)   # không chờ thật khi test
     gc._RESOLVED.clear()
     yield
     gc._RESOLVED.clear()
@@ -82,6 +87,67 @@ def test_loi_khac_404_khong_doi_model():
     with pytest.raises(Boom):
         gc.call_with_model_fallback(fake, "gemini-2.5-flash", fn)
     assert gc._RESOLVED == {}
+
+
+# ---------------------------------------------------------------- 429 do giới hạn lượt gọi mỗi phút (RPM)
+class RateLimited(Exception):
+    code = 429
+
+
+def test_429_theo_phut_cho_roi_thu_lai_cung_model():
+    tried = []
+
+    def fn(m):
+        tried.append(m)
+        if len(tried) == 1:
+            raise RateLimited("429 RESOURCE_EXHAUSTED GenerateRequestsPerMinutePerProjectPerModel "
+                              "{'retryDelay': '7s'}")
+        return f"OK từ {m}"
+
+    fake = SimpleNamespace(models=FakeModels(["gemini-flash-latest", "gemini-3.0-flash-lite"]))
+    result, used = gc.call_with_model_fallback(fake, "gemini-flash-latest", fn)
+    assert result == "OK từ gemini-flash-latest" and used == "gemini-flash-latest"
+    assert tried == ["gemini-flash-latest", "gemini-flash-latest"]
+    assert SLEPT == [7.0]
+
+
+def test_429_van_loi_sau_khi_thu_lai_thi_bao_loi_chi_2_lan_goi():
+    tried = []
+
+    def fn(m):
+        tried.append(m)
+        raise RateLimited("429 RESOURCE_EXHAUSTED PerMinute")
+
+    fake = SimpleNamespace(models=FakeModels(["gemini-flash-latest"]))
+    with pytest.raises(RateLimited):
+        gc.call_with_model_fallback(fake, "gemini-flash-latest", fn)
+    assert len(tried) == 2 and SLEPT == [gc.RATE_LIMIT_DEFAULT_WAIT]
+    assert "mỗi phút" in gc._map_error(RateLimited("429 RESOURCE_EXHAUSTED")).user_message
+
+
+def test_429_het_quota_ngay_khong_cho():
+    tried = []
+
+    def fn(m):
+        tried.append(m)
+        raise RateLimited("429 RESOURCE_EXHAUSTED GenerateRequestsPerDayPerProjectPerModel-FreeTier")
+
+    fake = SimpleNamespace(models=FakeModels(["gemini-flash-latest"]))
+    with pytest.raises(RateLimited):
+        gc.call_with_model_fallback(fake, "gemini-flash-latest", fn)
+    assert len(tried) == 1 and SLEPT == []
+    assert "trong ngày" in gc._map_error(RateLimited("PerDay quota")).user_message
+
+
+@pytest.mark.parametrize("msg,expected", [("'retryDelay': '12s'", 12.0), ('"retryDelay": "3.5s"', 3.5),
+                                          ("'retryDelay': '59s'", gc.RATE_LIMIT_MAX_WAIT), ("không có", 10.0)])
+def test_doc_retry_delay(msg, expected):
+    assert gc.retry_delay_seconds(Exception(msg)) == expected
+
+
+def test_gioi_han_vong_goi_cong_cu():
+    """Gói miễn phí 5 lượt/phút: mỗi câu hỏi tối đa 1 lượt hỏi + 3 vòng công cụ."""
+    assert gc.MAX_FUNCTION_CALLS == 3
 
 
 class Overloaded(Exception):

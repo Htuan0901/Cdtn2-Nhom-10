@@ -246,7 +246,8 @@ def ask_gemini(api_key: str, model: str, history: list[dict], user_msg: str, dat
         tools = [types.Tool(google_search=types.GoogleSearch())]
     elif use_tools and data_context:
         tools = DATA_TOOLS
-        afc = types.AutomaticFunctionCallingConfig(maximum_remote_calls=6)
+        from src.analytics.ai.gemini_client import MAX_FUNCTION_CALLS
+        afc = types.AutomaticFunctionCallingConfig(maximum_remote_calls=MAX_FUNCTION_CALLS)
 
     cfg = types.GenerateContentConfig(system_instruction=sys_prompt, temperature=temperature, tools=tools,
                                       automatic_function_calling=afc)
@@ -260,7 +261,8 @@ def ask_gemini(api_key: str, model: str, history: list[dict], user_msg: str, dat
         if "API_KEY_INVALID" in msg or "API key not valid" in msg:
             raise GeminiError("API key không hợp lệ. Hãy kiểm tra lại GEMINI_API_KEY trong file .env.") from e
         if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
-            raise GeminiError("Đã vượt giới hạn số lần gọi (quota) của API key. Vui lòng đợi một lát rồi thử lại.") from e
+            from src.analytics.ai.gemini_client import _rate_limit_message
+            raise GeminiError(_rate_limit_message(e)) from e
         if is_overloaded(e):
             raise GeminiError("Gemini đang quá tải phía Google (503), đã thử cả model dự phòng. Vui lòng đợi 1–2 phút rồi hỏi lại, "
                               "hoặc chọn model khác ở thanh bên.") from e
