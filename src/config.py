@@ -41,6 +41,45 @@ def get_gemini_key() -> str:
         return ""
 
 
+def get_setting(name: str, default: str = "") -> str:
+    """Đọc một cấu hình: biến môi trường (kể cả từ .env) trước, sau đó tới st.secrets (Streamlit Cloud)."""
+    v = os.getenv(name, "").strip()
+    if v:
+        return v
+    try:
+        import streamlit as st
+
+        v = str(st.secrets.get(name, "")).strip()
+    except Exception:
+        v = ""
+    return v or default
+
+
+def is_public() -> bool:
+    """True khi app chạy ở chế độ công khai trên web (APP_PUBLIC=1 trong Secrets / biến môi trường).
+
+    Ở chế độ này app ẩn các nhật ký dùng chung (hoạt động, huấn luyện, lỗi) và bật giới hạn câu hỏi Gemini.
+    """
+    return get_setting("APP_PUBLIC", "0").lower() in ("1", "true", "yes", "on")
+
+
+DEFAULT_PUBLIC_CHAT_LIMIT = 20
+
+
+def get_chat_limit() -> int:
+    """Số câu hỏi tối đa gửi tới Gemini (bằng key của nhóm) trong một phiên. 0 = không giới hạn.
+
+    Đặt bằng GEMINI_MAX_QUESTIONS. Nếu không đặt: chế độ công khai mặc định 20 câu, chạy trên máy cá nhân không giới hạn.
+    """
+    raw = get_setting("GEMINI_MAX_QUESTIONS", "")
+    if raw:
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            pass
+    return DEFAULT_PUBLIC_CHAT_LIMIT if is_public() else 0
+
+
 def get_gemini_model() -> str:
     return os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
 

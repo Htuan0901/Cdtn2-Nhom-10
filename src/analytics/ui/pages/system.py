@@ -14,6 +14,7 @@ from src.analytics.forecasting.forecaster import has_statsmodels
 from src.analytics.ml.trainer import HAS_XGB
 from src.analytics.ui import components as ui
 from src.analytics.ui.theme import BLUE, NAVY, TEAL
+from src.config import get_chat_limit, is_public
 
 LIBS = ["streamlit", "pandas", "numpy", "scikit-learn", "xgboost", "statsmodels", "scipy", "plotly", "matplotlib", "seaborn",
         "google-genai", "reportlab", "python-dotenv", "pyarrow", "joblib", "pytest"]
@@ -30,15 +31,22 @@ def render():
     ss = st.session_state
     ui.page_header("Thông tin hệ thống", "Phiên bản, thư viện, trạng thái kết nối AI, lịch sử hoạt động và nhật ký lỗi.", "settings", badge=f"v{APP_VERSION}")
     key = get_gemini_key()
+    public = is_public()
     ui.kpi_cards([
         {"label": "Phiên bản hệ thống", "value": APP_VERSION, "icon": "settings", "accent": NAVY, "hint": APP_NAME},
         {"label": "Python", "value": platform.python_version(), "icon": "code", "accent": BLUE, "hint": platform.system()},
-        {"label": "Gemini API Key", "value": "<span style='font-size:1rem'>" + mask_secret(key) + "</span>", "icon": "chat", "accent": TEAL,
+        {"label": "Gemini API Key", "value": "<span style='font-size:1rem'>" + (("Đã cấu hình" if key else "(chưa cấu hình)") if public else mask_secret(key)) + "</span>", "icon": "chat", "accent": TEAL,
          "hint": f"Model: {get_gemini_model()}"},
         {"label": "Cơ sở dữ liệu", "value": "SQLite", "icon": "rows", "accent": BLUE, "hint": "Hoạt động" if db.health_check() else "Lỗi"},
     ])
     st.caption(PROJECT_TITLE_VI)
-    t1, t2, t3, t4, t5 = st.tabs(["Trạng thái module", "Thư viện", "Lịch sử hoạt động", "Lịch sử huấn luyện", "Nhật ký lỗi"])
+    if public:
+        # Bản web công khai: nhật ký trong SQLite dùng chung cho MỌI người truy cập, nên không hiển thị
+        # (tránh lộ câu hỏi chat, tên file, traceback của người khác).
+        t1, t2 = st.tabs(["Trạng thái module", "Thư viện"])
+        t3 = t4 = t5 = None
+    else:
+        t1, t2, t3, t4, t5 = st.tabs(["Trạng thái module", "Thư viện", "Lịch sử hoạt động", "Lịch sử huấn luyện", "Nhật ký lỗi"])
     with t1:
         has = state.has_data(ss)
         res = {k: state.get_result(ss, k) is not None for k in state.RESULT_KEYS}
@@ -64,13 +72,19 @@ def render():
             st.caption("Chưa có dataset.")
         ui.section("Kiểm tra kết nối Gemini")
         st.caption("API Key được đọc từ file .env (biến GEMINI_API_KEY), không hiển thị và không ghi vào log.")
-        if ui.button("Kiểm tra kết nối", key="ping", full=False, disabled=not key):
+        if public:
+            lim = get_chat_limit()
+            ui.callout("Đây là bản web công khai (APP_PUBLIC=1): lịch sử hoạt động, lịch sử huấn luyện và nhật ký lỗi dùng chung "
+                       "đã được ẩn. Giới hạn câu hỏi Gemini mỗi phiên: " + (f"{lim} câu." if lim else "không giới hạn."), "info")
+        elif ui.button("Kiểm tra kết nối", key="ping", full=False, disabled=not key):
             with st.spinner("Đang gọi Gemini..."):
                 ok, msg = GeminiClient().ping()
             (st.success if ok else st.error)(msg)
     with t2:
         ui.show_df(pd.DataFrame([{"Thư viện": l, "Phiên bản": _version(l)} for l in LIBS]))
-        st.caption(f"Python {sys.version.split()[0]} · CSDL: {DB_PATH}")
+        st.caption(f"Python {sys.version.split()[0]}" + ("" if public else f" · CSDL: {DB_PATH}"))
+    if public:
+        return
     with t3:
         ui.show_df(db.read_table("activity_log", 300), height=420)
     with t4:
