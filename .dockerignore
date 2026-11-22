@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+storage/
+.pytest_cache/
+.streamlit/secrets.toml
+.vscode/
+tests/
+docs/screenshots/
