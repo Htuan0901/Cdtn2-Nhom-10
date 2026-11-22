@@ -110,6 +110,9 @@ if not api_key and not quota_out:
 3. Tải lại trang (F5). Hoặc dán key tạm thời vào ô <b>🔑 Nhập API key tạm thời</b> ở thanh bên.
 </div>""", unsafe_allow_html=True)
 
+if st.session_state.get("chat_error"):
+    st.error(st.session_state.pop("chat_error"))
+
 prompt = st.chat_input("Hỏi ITJobTrend AI bất cứ điều gì…")
 if not prompt and st.session_state.get("pending_prompt"):
     prompt = st.session_state.pop("pending_prompt")
@@ -130,6 +133,7 @@ if prompt:
     r = route(prompt, ws_df) if (ws_df is not None and use_data) else None
     use_agent = r is not None and r.kind == "data" and not KAGGLE_REF.search(prompt)
     calls, results, err = [], {}, False
+    gemini_used = False  # chỉ trừ lượt khi Gemini thật sự trả lời
     with st.chat_message("assistant", avatar=":material/auto_awesome:"):
         with st.spinner("Đang phân tích…"):
             if use_agent or not api_key:
@@ -137,6 +141,7 @@ if prompt:
                 if use_agent or (ws_df is not None and r is not None and r.kind == "data"):
                     resp = agent.answer(prompt, msgs)
                     answer = resp.text
+                    gemini_used = resp.used_llm
                     calls = [{"tool": n, "args": a} for n, a in resp.tool_calls]
                     results = json.loads(json.dumps(resp.tool_results, ensure_ascii=False, default=str))
                 elif quota_out:
@@ -152,6 +157,7 @@ if prompt:
                 try:
                     answer = chatbot.ask_gemini(api_key, model, msgs, prompt, ctx, use_tools=use_data,
                                                 use_search=use_search, temperature=temp)
+                    gemini_used = True
                 except chatbot.GeminiError as e:
                     answer, err = f"{e}", True
 
@@ -164,10 +170,12 @@ if prompt:
             st.error(answer)
         else:
             st.write_stream(_typewriter(answer))
-    if api_key:  # câu hỏi đã gửi tới Gemini
+    if api_key and gemini_used:  # chỉ tính lượt khi Gemini trả lời thành công (lỗi model/mạng không mất lượt)
         chat_quota.register_question(st.session_state)
     log_activity("chat", "Agent" if (use_agent or not api_key) else "Gemini", prompt[:200], ws.get("dataset_id"))
     msgs.append({"role": "user", "content": prompt})
     if not err:
         msgs.append({"role": "assistant", "content": answer, "calls": calls, "results": results})
+    else:  # giữ thông báo lỗi sau khi trang chạy lại, nếu không người dùng chỉ thấy lỗi chớp qua rồi mất
+        st.session_state["chat_error"] = answer
     st.rerun()
