@@ -27,7 +27,7 @@ share.streamlit.io → app **itjobtrend** → **⋮ → Settings → Secrets**:
 
 ```toml
 GEMINI_API_KEY = "khóa-của-nhóm"
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-flash-latest"
 APP_PUBLIC = "1"
 GEMINI_MAX_QUESTIONS = "20"
 ```
