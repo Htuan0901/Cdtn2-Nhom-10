@@ -1,0 +1,130 @@
+[
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Dữ liệu gốc (postings.csv)",
+  "Trước": 123849,
+  "Sau": 123849,
+  "Bị loại": 0,
+  "Ghi chú": "16 cột được dùng"
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Xóa trùng job_id",
+  "Trước": 123849,
+  "Sau": 123849,
+  "Bị loại": 0,
+  "Ghi chú": ""
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Bỏ tin thiếu tiêu đề/mô tả",
+  "Trước": 123849,
+  "Sau": 123782,
+  "Bị loại": 67,
+  "Ghi chú": "mô tả < 50 ký tự coi như thiếu"
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Xóa tin đăng lặp lại",
+  "Trước": 123782,
+  "Sau": 111132,
+  "Bị loại": 12650,
+  "Ghi chú": "trùng tiêu đề + công ty + mô tả"
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Lọc tin ngành CNTT",
+  "Trước": 111132,
+  "Sau": 12099,
+  "Bị loại": 99033,
+  "Ghi chú": "10,346 khớp tiêu đề; 1,753 thêm từ nhãn IT + ≥3 kỹ năng công nghệ"
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Chuẩn hóa lương (USD/năm)",
+  "Trước": 12099,
+  "Sau": 12099,
+  "Bị loại": 0,
+  "Ghi chú": "3,632 tin có lương; loại 71 giá trị ngoại lai (<15k hoặc >600k USD)"
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Chuẩn hóa địa điểm/kinh nghiệm/ngày đăng",
+  "Trước": 12099,
+  "Sau": 12099,
+  "Bị loại": 0,
+  "Ghi chú": "tách bang (state), map cấp bậc sang tiếng Việt"
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Trích xuất kỹ năng & phân loại vị trí",
+  "Trước": 12099,
+  "Sau": 12099,
+  "Bị loại": 0,
+  "Ghi chú": "TB 4.8 kỹ năng/tin; 93% tin có ≥1 kỹ năng"
+ },
+ {
+  "Nguồn": "LinkedIn",
+  "Bước": "Kết quả LinkedIn (CNTT)",
+  "Trước": 123849,
+  "Sau": 12099,
+  "Bị loại": 111750,
+  "Ghi chú": "114 giây"
+ },
+ {
+  "Nguồn": "Hacker News",
+  "Bước": "Dữ liệu gốc (jobs_2018_2023.csv)",
+  "Trước": 47206,
+  "Sau": 47206,
+  "Bị loại": 0,
+  "Ghi chú": ""
+ },
+ {
+  "Nguồn": "Hacker News",
+  "Bước": "Bỏ tin rỗng/quá ngắn",
+  "Trước": 47206,
+  "Sau": 47026,
+  "Bị loại": 180,
+  "Ghi chú": "< 40 ký tự"
+ },
+ {
+  "Nguồn": "Hacker News",
+  "Bước": "Xóa tin trùng",
+  "Trước": 47026,
+  "Sau": 43160,
+  "Bị loại": 3866,
+  "Ghi chú": "trùng id hoặc trùng nội dung trong cùng năm"
+ },
+ {
+  "Nguồn": "Hacker News",
+  "Bước": "Chuẩn hóa tháng đăng (thread)",
+  "Trước": 43160,
+  "Sau": 43160,
+  "Bị loại": 0,
+  "Ghi chú": "ghép hn_hiring_month + hn_hiring_year"
+ },
+ {
+  "Nguồn": "Hacker News",
+  "Bước": "Ghép thông tin đã tách (parsed_jobs)",
+  "Trước": 43160,
+  "Sau": 43160,
+  "Bị loại": 0,
+  "Ghi chú": "quốc gia, remote, vị trí, tech stack"
+ },
+ {
+  "Nguồn": "Hacker News",
+  "Bước": "Trích xuất kỹ năng, vị trí, lương",
+  "Trước": 43160,
+  "Sau": 43160,
+  "Bị loại": 0,
+  "Ghi chú": "TB 5.7 kỹ năng/tin; 2% tin ghi lương"
+ },
+ {
+  "Nguồn": "Hacker News",
+  "Bước": "Kết quả Hacker News",
+  "Trước": 47206,
+  "Sau": 43160,
+  "Bị loại": 4046,
+  "Ghi chú": "49 giây"
+ }
+]
