@@ -1,0 +1,24 @@
+name: Kiem thu tu dong
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Cai thu vien
+        run: pip install -r requirements.txt
+      - name: Kiem tra cu phap toan bo ma nguon
+        run: python -m compileall -q src views app.py
+      - name: Chay pytest
+        run: |
+          pytest || [ $? -eq 5 ]   # ma 5 = chua co test nao, van cho qua
