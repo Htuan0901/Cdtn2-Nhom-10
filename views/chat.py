@@ -4,14 +4,14 @@ import time
 
 import streamlit as st
 
-from src import chatbot
+from src import chat_quota, chatbot
 from src.analytics import state as ws_state
 from src.analytics.ai.agent import DataAgent
 from src.analytics.ai.gemini_client import GeminiClient
 from src.analytics.ai.router import route
 from src.analytics.ai.tools import DataTools
 from src.analytics.db.database import log_activity
-from src.config import get_gemini_key, get_gemini_model
+from src.config import get_chat_limit, get_gemini_key, get_gemini_model
 
 MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
 
@@ -42,6 +42,13 @@ with st.sidebar:
 
 api_key = get_gemini_key()
 msgs = st.session_state.setdefault("messages", [])
+
+# Giới hạn số câu hỏi Gemini mỗi phiên (bản web): hết lượt thì chỉ còn chế độ offline (không gọi Gemini bằng key nhóm)
+chat_limit = get_chat_limit()
+quota_left = chat_quota.remaining(st.session_state, chat_limit)
+quota_out = bool(api_key) and quota_left == 0
+if quota_out:
+    api_key = ""
 
 # ---------------- Màn hình chào kiểu Gemini ----------------
 if not msgs:
@@ -88,7 +95,13 @@ ws_df = ws.get("df")
 if ws_df is not None and ws.get("meta"):
     st.caption(f"Bộ dữ liệu phân tích đang chọn: **{ws['meta'].get('name')}** ({len(ws_df):,} dòng). Câu hỏi định lượng về bộ dữ liệu này "
                "được Data Analysis Agent tính bằng Python trước, rồi mới nhờ Gemini diễn giải.")
-if not api_key:
+if quota_out:
+    st.warning(f"Bạn đã dùng hết {chat_limit} câu hỏi Gemini của phiên này (giới hạn để bảo vệ quota API key của nhóm). "
+               "Câu hỏi định lượng về bộ dữ liệu phân tích vẫn được trả lời ở chế độ offline. Muốn hỏi tiếp với Gemini, "
+               "hãy dán API key của riêng bạn vào ô **🔑 Nhập API key tạm thời** ở thanh bên.")
+elif quota_left is not None and api_key:
+    st.caption(f"Còn **{quota_left}/{chat_limit}** câu hỏi Gemini trong phiên này.")
+if not api_key and not quota_out:
     st.markdown("""
 <div class="key-warning">
 <b>Chưa có Gemini API key.</b> Câu hỏi định lượng về bộ dữ liệu phân tích vẫn được trả lời (chế độ offline); các câu hỏi khác cần API key:<br>
@@ -126,6 +139,10 @@ if prompt:
                     answer = resp.text
                     calls = [{"tool": n, "args": a} for n, a in resp.tool_calls]
                     results = json.loads(json.dumps(resp.tool_results, ensure_ascii=False, default=str))
+                elif quota_out:
+                    answer = (f"Phiên này đã dùng hết **{chat_limit} câu hỏi Gemini**. Hãy dán API key của riêng bạn vào ô "
+                              "**🔑 Nhập API key tạm thời** ở thanh bên để hỏi tiếp. Câu hỏi định lượng về *bộ dữ liệu phân tích* "
+                              "vẫn được trả lời bằng số liệu tính trực tiếp.")
                 else:
                     answer = ("Câu hỏi này cần Gemini nhưng **chưa có API key**. Hãy điền `GEMINI_API_KEY` trong file `.env` "
                               "(hoặc nhập key tạm ở thanh bên) rồi thử lại. Câu hỏi định lượng về *bộ dữ liệu phân tích* vẫn được "
@@ -147,6 +164,8 @@ if prompt:
             st.error(answer)
         else:
             st.write_stream(_typewriter(answer))
+    if api_key:  # câu hỏi đã gửi tới Gemini
+        chat_quota.register_question(st.session_state)
     log_activity("chat", "Agent" if (use_agent or not api_key) else "Gemini", prompt[:200], ws.get("dataset_id"))
     msgs.append({"role": "user", "content": prompt})
     if not err:
