@@ -25,7 +25,7 @@ Ruleset **bao-ve-main** (Settings → Rules → Rulesets) áp cho nhánh mặc �
 | Cấm xóa nhánh `main` | Đã bật |
 | Cấm force push (`non_fast_forward`) | Đã bật |
 | Mọi thay đổi phải qua Pull Request, cần **1 approve** | Đã bật |
-| Bắt buộc CI `test` báo xanh mới được merge | Bật cùng PR thêm test giao diện (xem mục 2.1) |
+| Bắt buộc CI `test` báo xanh mới được merge | **Chưa bật**, chủ repo bật tay theo mục 2.1 (check `test` đã chạy xanh ở PR #13) |
 
 ### 2.1 Cách tự kiểm tra / bật lại bằng tay
 
