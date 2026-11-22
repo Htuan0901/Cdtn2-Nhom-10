@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass, field
 
 from src.analytics.config import AI_TIMEOUT_SECONDS, get_gemini_key, get_gemini_model
@@ -45,7 +46,7 @@ def _map_error(exc: Exception) -> GeminiError:
     if code in (401, 403) or "API_KEY_INVALID" in msg or "API key not valid" in msg:
         return GeminiError("API Key không hợp lệ hoặc không có quyền truy cập model. Hãy kiểm tra GEMINI_API_KEY trong file .env.", "auth")
     if code == 429 or "RESOURCE_EXHAUSTED" in msg:
-        return GeminiError("Đã vượt giới hạn gọi API của Gemini (rate limit/quota). Vui lòng đợi ít phút rồi thử lại.", "rate_limit")
+        return GeminiError(_rate_limit_message(exc), "rate_limit")
     if is_model_not_found(exc):
         return GeminiError("Không tìm thấy model đã cấu hình (GEMINI_MODEL) và không tự chọn được model thay thế. "
                            f"Hãy đặt GEMINI_MODEL bằng một model có trong Google AI Studio. Chi tiết: {msg[:160]}", "model")
@@ -58,6 +59,14 @@ def _map_error(exc: Exception) -> GeminiError:
     if "Connect" in name or "Network" in name or "getaddrinfo" in msg or "ConnectionError" in name:
         return GeminiError("Không kết nối được tới Gemini. Hãy kiểm tra kết nối Internet.", "network")
     return GeminiError(f"Gemini trả về lỗi: {msg[:200]}", "error")
+
+
+def _rate_limit_message(exc: Exception) -> str:
+    if is_daily_quota(exc):
+        return ("API key đã dùng hết lượt gọi Gemini trong ngày (gói miễn phí). Hãy thử lại vào ngày mai, "
+                "chọn model khác (flash-lite) ở thanh bên, hoặc dùng API key khác.")
+    return ("Gemini đang giới hạn số lượt gọi mỗi phút (gói miễn phí), app đã chờ và thử lại nhưng vẫn bị chặn. "
+            "Vui lòng đợi khoảng 1 phút rồi hỏi lại, hoặc chọn model flash-lite ở thanh bên.")
 
 
 # ---------------------------------------------------------------- Tự chọn model khi model cấu hình không còn
@@ -79,6 +88,46 @@ def is_overloaded(exc: Exception) -> bool:
     code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
     msg = str(exc)
     return code == 503 or "UNAVAILABLE" in msg or "high demand" in msg or "overloaded" in msg.lower()
+
+
+# Gói miễn phí giới hạn số lượt gọi mỗi phút (RPM, vd. 5 lượt/phút với Gemini Flash). Một câu hỏi có dùng
+# công cụ dữ liệu tốn nhiều lượt (mỗi vòng gọi công cụ là 1 lượt), nên dễ chạm giới hạn phút rồi nhận 429.
+# Lỗi này hết sau vài giây, nên app chờ rồi thử lại 1 lần. Hết quota theo ngày thì chờ cũng vô ích, báo lỗi ngay.
+MAX_FUNCTION_CALLS = 3          # số vòng gọi công cụ tối đa cho 1 câu hỏi
+RATE_LIMIT_MAX_WAIT = 20.0      # giây chờ tối đa trước khi thử lại sau 429
+RATE_LIMIT_DEFAULT_WAIT = 10.0  # giây chờ khi Google không ghi retryDelay
+_sleep = time.sleep             # tách riêng để test thay bằng hàm không chờ
+
+
+def is_rate_limited(exc: Exception) -> bool:
+    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    msg = str(exc)
+    return code == 429 or "429" in msg or "RESOURCE_EXHAUSTED" in msg
+
+
+def is_daily_quota(exc: Exception) -> bool:
+    """429 do hết quota theo ngày (quotaId chứa PerDay): thử lại trong vài giây không có tác dụng."""
+    return "PerDay" in str(exc) or "per day" in str(exc).lower()
+
+
+def retry_delay_seconds(exc: Exception) -> float:
+    """Đọc retryDelay Google gửi kèm lỗi 429 (vd. 'retryDelay': '12s'), giới hạn trong RATE_LIMIT_MAX_WAIT."""
+    m = re.search(r"retryDelay['\"]?\s*[:=]\s*['\"]?(\d+(?:\.\d+)?)s", str(exc))
+    wait = float(m.group(1)) if m else RATE_LIMIT_DEFAULT_WAIT
+    return max(1.0, min(wait, RATE_LIMIT_MAX_WAIT))
+
+
+def _call_with_rpm_retry(fn, model: str):
+    """Gọi fn(model); nếu gặp 429 theo phút thì chờ theo retryDelay rồi thử lại đúng 1 lần."""
+    try:
+        return fn(model)
+    except Exception as exc:  # noqa: BLE001
+        if not is_rate_limited(exc) or is_daily_quota(exc):
+            raise
+        wait = retry_delay_seconds(exc)
+        log.warning("Gemini 429 (giới hạn theo phút) với %s, chờ %.0f giây rồi thử lại", model, wait)
+        _sleep(wait)
+        return fn(model)
 
 
 def _version(name: str) -> float:
@@ -132,7 +181,7 @@ def call_with_model_fallback(client, model: str, fn):
     """
     use = _RESOLVED.get(model, model)
     try:
-        return fn(use), use
+        return _call_with_rpm_retry(fn, use), use
     except Exception as exc:  # noqa: BLE001
         missing = is_model_not_found(exc)
         if not (missing or is_overloaded(exc)):
@@ -144,7 +193,7 @@ def call_with_model_fallback(client, model: str, fn):
         if not alt:
             raise exc
         log.warning("Model %s %s, chuyển sang %s", use, "không còn" if missing else "quá tải", alt)
-        result = fn(alt)
+        result = _call_with_rpm_retry(fn, alt)
         if missing:
             _RESOLVED[model] = alt
         return result, alt
@@ -177,7 +226,7 @@ class GeminiClient:
         return self._client
 
     def generate(self, contents: list[dict], system: str, functions: list | None = None,
-                 temperature: float = 0.3, max_calls: int = 6) -> GeminiReply:
+                 temperature: float = 0.3, max_calls: int = MAX_FUNCTION_CALLS) -> GeminiReply:
         client = self._get()
         from google.genai import types
 
