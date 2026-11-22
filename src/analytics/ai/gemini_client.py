@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from src.analytics.config import AI_TIMEOUT_SECONDS, get_gemini_key, get_gemini_model
@@ -45,8 +46,9 @@ def _map_error(exc: Exception) -> GeminiError:
         return GeminiError("API Key không hợp lệ hoặc không có quyền truy cập model. Hãy kiểm tra GEMINI_API_KEY trong file .env.", "auth")
     if code == 429 or "RESOURCE_EXHAUSTED" in msg:
         return GeminiError("Đã vượt giới hạn gọi API của Gemini (rate limit/quota). Vui lòng đợi ít phút rồi thử lại.", "rate_limit")
-    if code == 404 or "NOT_FOUND" in msg:
-        return GeminiError("Không tìm thấy model đã cấu hình (GEMINI_MODEL). Hãy kiểm tra tên model trong file .env.", "model")
+    if is_model_not_found(exc):
+        return GeminiError("Không tìm thấy model đã cấu hình (GEMINI_MODEL) và không tự chọn được model thay thế. "
+                           f"Hãy đặt GEMINI_MODEL bằng một model có trong Google AI Studio. Chi tiết: {msg[:160]}", "model")
     if code and int(code) >= 500:
         return GeminiError("Máy chủ Gemini đang gặp sự cố tạm thời. Vui lòng thử lại sau.", "server")
     if "Timeout" in name or "timeout" in msg.lower():
@@ -54,6 +56,85 @@ def _map_error(exc: Exception) -> GeminiError:
     if "Connect" in name or "Network" in name or "getaddrinfo" in msg or "ConnectionError" in name:
         return GeminiError("Không kết nối được tới Gemini. Hãy kiểm tra kết nối Internet.", "network")
     return GeminiError(f"Gemini trả về lỗi: {msg[:200]}", "error")
+
+
+# ---------------------------------------------------------------- Tự chọn model khi model cấu hình không còn
+# Google định kỳ ngừng các model cũ (vd. gemini-2.0-flash, rồi gemini-2.5-flash). Khi đó API trả 404 NOT_FOUND.
+# Thay vì báo lỗi, app hỏi API danh sách model mà key này dùng được rồi chọn model "flash" mới nhất.
+_RESOLVED: dict[str, str] = {}      # model cấu hình -> model thay thế đã chọn (dùng chung trong tiến trình)
+_SKIP_WORDS = ("embedding", "image", "imagen", "tts", "audio", "live", "aqa", "vision", "robotics", "computer-use",
+               "learnlm", "gemma", "veo", "native")
+
+
+def is_model_not_found(exc: Exception) -> bool:
+    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    msg = str(exc)
+    return code == 404 or "NOT_FOUND" in msg or "is not found" in msg
+
+
+def _version(name: str) -> float:
+    m = re.search(r"gemini-(\d+(?:\.\d+)?)", name)
+    return float(m.group(1)) if m else 0.0
+
+
+def choose_fallback_model(names: list[str], wanted: str = "") -> str | None:
+    """Chọn model thay thế từ danh sách tên model (bỏ tiền tố "models/").
+
+    Thứ tự ưu tiên: alias gemini-flash-latest → flash bản ổn định mới nhất → flash-lite → pro → bản preview.
+    """
+    clean = [n.split("/", 1)[-1] for n in names if n]
+    clean = [n for n in clean if n.startswith("gemini") and not any(w in n for w in _SKIP_WORDS) and n != wanted]
+    if not clean:
+        return None
+    if "gemini-flash-latest" in clean:
+        return "gemini-flash-latest"
+
+    def score(n: str):
+        unstable = any(w in n for w in ("preview", "exp", "thinking"))
+        if "flash" in n and "lite" not in n:
+            fam = 0
+        elif "flash-lite" in n:
+            fam = 1
+        elif "pro" in n:
+            fam = 2
+        else:
+            fam = 3
+        return (unstable, fam, -_version(n), "latest" not in n, len(n))
+
+    return sorted(clean, key=score)[0]
+
+
+def list_generate_models(client) -> list[str]:
+    """Tên các model dùng được với generateContent cho key hiện tại."""
+    out = []
+    for m in client.models.list():
+        actions = getattr(m, "supported_actions", None) or getattr(m, "supported_generation_methods", None) or []
+        if not actions or "generateContent" in actions:
+            out.append(getattr(m, "name", "") or "")
+    return out
+
+
+def call_with_model_fallback(client, model: str, fn):
+    """Gọi fn(model). Nếu model không tồn tại (404) thì tự chọn model thay thế và gọi lại đúng 1 lần.
+
+    Trả về (kết quả, model_đã_dùng). Ngoại lệ gốc được ném lại nếu không tìm được model thay thế.
+    """
+    use = _RESOLVED.get(model, model)
+    try:
+        return fn(use), use
+    except Exception as exc:  # noqa: BLE001
+        if not is_model_not_found(exc):
+            raise
+        try:
+            alt = choose_fallback_model(list_generate_models(client), wanted=use)
+        except Exception:  # noqa: BLE001
+            alt = None
+        if not alt:
+            raise exc
+        log.warning("Model %s không còn, chuyển sang %s", use, alt)
+        result = fn(alt)
+        _RESOLVED[model] = alt
+        return result, alt
 
 
 class GeminiClient:
@@ -92,8 +173,9 @@ class GeminiClient:
             cfg["tools"] = functions
             cfg["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(maximum_remote_calls=max_calls)
         try:
-            resp = client.models.generate_content(model=self.model, contents=contents,
-                                                  config=types.GenerateContentConfig(**cfg))
+            resp, self.model = call_with_model_fallback(
+                client, self.model,
+                lambda m: client.models.generate_content(model=m, contents=contents, config=types.GenerateContentConfig(**cfg)))
         except GeminiError:
             raise
         except Exception as exc:
@@ -113,11 +195,11 @@ class GeminiClient:
         client = self._get()
         from google.genai import types
 
+        cfg = types.GenerateContentConfig(system_instruction=system, temperature=temperature,
+                                          tools=[types.Tool(google_search=types.GoogleSearch())])
         try:
-            resp = client.models.generate_content(
-                model=self.model, contents=contents,
-                config=types.GenerateContentConfig(system_instruction=system, temperature=temperature,
-                                                   tools=[types.Tool(google_search=types.GoogleSearch())]))
+            resp, self.model = call_with_model_fallback(
+                client, self.model, lambda m: client.models.generate_content(model=m, contents=contents, config=cfg))
         except Exception as exc:
             raise _map_error(exc)
         text = _safe_text(resp)

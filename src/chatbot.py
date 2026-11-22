@@ -247,18 +247,24 @@ def ask_gemini(api_key: str, model: str, history: list[dict], user_msg: str, dat
 
     cfg = types.GenerateContentConfig(system_instruction=sys_prompt, temperature=temperature, tools=tools,
                                       automatic_function_calling=afc)
+    from src.analytics.ai.gemini_client import call_with_model_fallback, is_model_not_found
+
     try:
-        resp = client.models.generate_content(model=model, contents=contents, config=cfg)
+        resp, used_model = call_with_model_fallback(
+            client, model, lambda m: client.models.generate_content(model=m, contents=contents, config=cfg))
     except Exception as e:
         msg = str(e)
         if "API_KEY_INVALID" in msg or "API key not valid" in msg:
             raise GeminiError("API key không hợp lệ. Hãy kiểm tra lại GEMINI_API_KEY trong file .env.") from e
         if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
             raise GeminiError("Đã vượt giới hạn số lần gọi (quota) của API key. Vui lòng đợi một lát rồi thử lại.") from e
-        if "404" in msg or "NOT_FOUND" in msg:
-            raise GeminiError(f"Không tìm thấy model '{model}'. Hãy chọn model khác ở thanh bên hoặc sửa GEMINI_MODEL trong .env.") from e
+        if is_model_not_found(e):
+            raise GeminiError(f"Không tìm thấy model '{model}' và không tự chọn được model thay thế. Hãy đặt GEMINI_MODEL "
+                              "bằng một model có trong Google AI Studio (Secrets trên web, .env trên máy).") from e
         raise GeminiError(f"Lỗi khi gọi Gemini: {msg[:400]}") from e
     text = (resp.text or "").strip() if resp is not None else ""
     if not text:
         text = "_(Gemini không trả về nội dung. Bạn thử diễn đạt lại câu hỏi nhé.)_"
+    if used_model != model:
+        text += f"\n\n*(Model {model} không còn khả dụng, đã tự chuyển sang {used_model}.)*"
     return text

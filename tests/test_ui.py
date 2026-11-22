@@ -174,3 +174,22 @@ def test_chat_dung_goi_gemini_khi_het_luot(monkeypatch):
     assert calls == ["câu 1", "câu 2"]
     assert at.session_state["gemini_questions_used"] == 2
     assert any("hết 2 câu hỏi Gemini" in str(w.value) for w in at.warning)
+
+
+def test_chat_khong_tru_luot_khi_gemini_loi(monkeypatch):
+    """Gemini lỗi (vd. model không tồn tại) thì người dùng không bị mất lượt hỏi."""
+    from src import chatbot
+
+    def failing_ask(*a, **kw):
+        raise chatbot.GeminiError("Không tìm thấy model 'gemini-2.5-flash'")
+
+    monkeypatch.setattr(chatbot, "ask_gemini", failing_ask)
+    monkeypatch.setenv("GEMINI_API_KEY", "khoa-gia-de-test")
+    monkeypatch.setenv("GEMINI_MAX_QUESTIONS", "2")
+
+    at = _new_app().switch_page("views/chat.py").run()
+    at.chat_input[0].set_value("câu lỗi").run()
+    assert not at.exception
+    used = at.session_state["gemini_questions_used"] if "gemini_questions_used" in at.session_state else 0
+    assert used == 0
+    assert any("Không tìm thấy model" in str(e.value) for e in at.error)
