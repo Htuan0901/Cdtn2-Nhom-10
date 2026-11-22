@@ -1,6 +1,6 @@
 # Hướng dẫn đưa ITJobTrend lên web
 
-Ứng dụng đã chạy thử được trên Python 3.11–3.13, 117/117 test đạt. Lúc chạy, app dùng khoảng **0,8–2 GB RAM**
+Ứng dụng đã chạy thử được trên Python 3.11–3.13, toàn bộ test đạt (unit test + `tests/test_ui.py` mở 20 trang bằng AppTest). Lúc chạy, app dùng khoảng **0,8–2 GB RAM**
 (tùy số trang đã mở và số người dùng cùng lúc), dữ liệu kèm theo khoảng 37 MB. Vì vậy:
 
 | Nền tảng | Miễn phí | RAM | Phù hợp? |
@@ -18,6 +18,13 @@
   key nhập tạm trong trang Trợ lý AI → file `.env` → biến môi trường → `st.secrets`.
 - Lưu ý: nếu bạn cài key của nhóm vào Secrets, **mọi người có link đều dùng chung quota key đó**.
   Nếu không muốn, để trống Secrets, người dùng tự dán key của họ ở trang Trợ lý AI (key chỉ sống trong phiên).
+- Bản web **phải** đặt `APP_PUBLIC = "1"` trong Secrets. Khi đó:
+  - Trang **Thông tin hệ thống** ẩn 3 tab *Lịch sử hoạt động*, *Lịch sử huấn luyện*, *Nhật ký lỗi* (SQLite dùng chung
+    cho mọi người truy cập, có cả câu hỏi chat và traceback của người khác), không hiện đường dẫn CSDL và 4 ký tự cuối của key.
+  - Trang **Trợ lý AI** giới hạn mỗi phiên `GEMINI_MAX_QUESTIONS` câu hỏi dùng key của nhóm (mặc định 20).
+    Hết lượt thì câu hỏi định lượng về bộ dữ liệu vẫn trả lời offline; ai dán key riêng ở thanh bên thì không bị giới hạn.
+  - Lưu ý: "phiên" là một tab trình duyệt; tải lại trang (F5) là phiên mới. Giới hạn này chặn việc vô tình dùng hết quota,
+    không chặn được người cố tình. Nên đặt thêm hạn mức trong Google AI Studio / Google Cloud cho key của nhóm.
 - Nếu lỡ commit key lên GitHub: vào Google AI Studio **xóa key đó và tạo key mới** (xóa commit là chưa đủ).
 
 ## 1. Streamlit Community Cloud (khuyến nghị)
@@ -29,7 +36,11 @@
    ```toml
    GEMINI_API_KEY = "khóa-của-nhóm"
    GEMINI_MODEL = "gemini-2.5-flash"
+   APP_PUBLIC = "1"            # bắt buộc cho bản web: ẩn nhật ký dùng chung, bật giới hạn câu hỏi
+   GEMINI_MAX_QUESTIONS = "20" # số câu hỏi Gemini tối đa mỗi phiên (0 = không giới hạn)
    ```
+   App đã deploy rồi thì vào **share.streamlit.io → app ITJobTrend → ⋮ → Settings → Secrets**, thêm 2 dòng cuối,
+   bấm **Save**. App tự khởi động lại trong khoảng 1 phút.
 5. Bấm **Deploy**. Lần đầu cài thư viện mất khoảng 3–5 phút. Link có dạng `https://<tên>.streamlit.app`.
 6. Mỗi lần `git push` lên `main`, app tự cập nhật.
 
@@ -59,6 +70,10 @@ docker run -p 8501:8501 -e GEMINI_API_KEY=khóa-của-nhóm itjobtrend
 
 - Upload file tối đa **200 MB** (`.streamlit/config.toml`). Chạy ở máy cá nhân muốn tăng thì sửa `maxUploadSize`.
 - Thư mục `storage/` (SQLite nhật ký, mô hình đã huấn luyện, file xuất) **bị xóa mỗi lần app khởi động lại**
-  và **dùng chung giữa mọi người truy cập** (trang Thông tin hệ thống hiển thị nhật ký chung). Đây là bản demo, không lưu dữ liệu lâu dài.
+  và **dùng chung giữa mọi người truy cập** (vì vậy bản web đặt `APP_PUBLIC=1` để ẩn nhật ký chung). Đây là bản demo, không lưu dữ liệu lâu dài.
 - Trang "Nhập dữ liệu Kaggle" cần upload `archive.zip` (~160 MB) và chạy pipeline vài phút, có thể chậm trên gói free.
   App đã có sẵn dữ liệu xử lý trong `data/processed/` nên không cần bước này khi demo.
+
+## Kiểm thử bản web và nhật ký lỗi
+
+Checklist kiểm thử trên máy tính và điện thoại, cùng bảng ghi lỗi gặp phải và cách sửa: [docs/NHAT_KY_DEPLOY.md](docs/NHAT_KY_DEPLOY.md).

@@ -5,10 +5,17 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+# Moi PR chi giu lai lan chay moi nhat, huy lan chay cu khi day commit moi
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,7 +25,9 @@ jobs:
       - name: Cai thu vien
         run: pip install -r requirements.txt
       - name: Kiem tra cu phap toan bo ma nguon
-        run: python -m compileall -q src views app.py
-      - name: Chay pytest
-        run: |
-          pytest || [ $? -eq 5 ]   # ma 5 = chua co test nao, van cho qua
+        run: python -m compileall -q src views app.py tests
+      - name: Chay pytest (unit test + test giao dien AppTest)
+        env:
+          # Khong dung key that tren CI; test chat dung Gemini gia
+          GEMINI_API_KEY: ""
+        run: pytest -q -rf --durations=10

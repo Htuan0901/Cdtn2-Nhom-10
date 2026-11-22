@@ -164,6 +164,7 @@ pytest -v tests/test_itjobtrend.py
 | `test_jobs.py` | Chuẩn hóa lương VND/USD/theo tuần, kinh nghiệm, tỉnh/thành, lọc CNTT, kỹ năng tiếng Việt |
 | `test_analytics.py` | EDA, K-Means/PCA, ML (hồi quy, phân loại mất cân bằng, rò rỉ), dự báo, Isolation Forest |
 | `test_ai.py` | Router câu hỏi, công cụ dữ liệu, **AI không có API Key**, **AI trả lời câu hỏi dataset bằng số liệu thật**, lỗi 429/401, che key trong log |
+| `test_ui.py` | **Test giao diện bằng `streamlit.testing.AppTest`**: mở lần lượt cả 20 trang (phiên mới và khi đã chọn dataset), không trang nào báo lỗi; `APP_PUBLIC=1` ẩn nhật ký dùng chung; giới hạn câu hỏi Gemini mỗi phiên (Gemini giả, không tốn quota) |
 
 Tài liệu: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ALGORITHMS.md](docs/ALGORITHMS.md).
 
