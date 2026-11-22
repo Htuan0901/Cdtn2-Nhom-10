@@ -81,7 +81,7 @@ def get_chat_limit() -> int:
 
 
 def get_gemini_model() -> str:
-    return os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    return get_setting("GEMINI_MODEL", "gemini-flash-latest")
 
 
 APP_NAME = "ITJobTrend"

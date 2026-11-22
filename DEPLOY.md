@@ -35,7 +35,7 @@
 4. Bấm **Advanced settings**: Python version **3.11** hoặc 3.12; ô **Secrets** dán:
    ```toml
    GEMINI_API_KEY = "khóa-của-nhóm"
-   GEMINI_MODEL = "gemini-2.5-flash"
+   GEMINI_MODEL = "gemini-flash-latest"
    APP_PUBLIC = "1"            # bắt buộc cho bản web: ẩn nhật ký dùng chung, bật giới hạn câu hỏi
    GEMINI_MAX_QUESTIONS = "20" # số câu hỏi Gemini tối đa mỗi phiên (0 = không giới hạn)
    ```

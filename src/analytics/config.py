@@ -73,7 +73,7 @@ CSV_DELIMITERS = (",", ";", "\t", "|")
 AI_MAX_CONTEXT_CHARS = 12_000    # giới hạn kích thước ngữ cảnh đưa vào Gemini
 AI_MAX_HISTORY_TURNS = 8
 AI_TIMEOUT_SECONDS = 60
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-flash-latest"   # alias luôn trỏ tới model Flash mới nhất của Google
 
 
 def get_gemini_key() -> str | None:

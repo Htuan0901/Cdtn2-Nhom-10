@@ -78,7 +78,7 @@ ITJobTrend/
 2. Mở file `.env` (cùng thư mục với `app.py`; nếu chưa có thì copy từ `.env.example`), điền:
    ```
    GEMINI_API_KEY=AIza...key_cua_ban...
-   GEMINI_MODEL=gemini-2.5-flash
+   GEMINI_MODEL=gemini-flash-latest
    ```
    Không để dấu cách hay dấu nháy. Lưu file rồi F5. Có thể dán key tạm trong thanh bên của trang Trợ lý AI (chỉ lưu trong phiên).
 3. Kiểm tra: trang **Thông tin hệ thống → Kiểm tra kết nối**.

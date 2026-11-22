@@ -118,3 +118,14 @@ def test_qua_tai_ca_model_du_phong_bao_loi_than_thien(monkeypatch):
         client.generate([{"role": "user", "parts": [{"text": "x"}]}], "system")
     assert "quá tải" in ei.value.user_message
     assert len(fake.models.calls) == 2      # model cấu hình + đúng 1 model dự phòng, không lặp vô hạn
+
+
+def test_model_mac_dinh_la_alias_moi_nhat(monkeypatch):
+    """Không đặt GEMINI_MODEL thì dùng alias gemini-flash-latest (Google tự trỏ tới Flash mới nhất)."""
+    from src.analytics.config import DEFAULT_GEMINI_MODEL
+    from src.config import get_gemini_model
+
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    assert get_gemini_model() == "gemini-flash-latest" == DEFAULT_GEMINI_MODEL
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-pro-latest")
+    assert get_gemini_model() == "gemini-pro-latest"

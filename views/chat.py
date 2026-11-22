@@ -13,7 +13,7 @@ from src.analytics.ai.tools import DataTools
 from src.analytics.db.database import log_activity
 from src.config import get_chat_limit, get_gemini_key, get_gemini_model
 
-MODELS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
+MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-pro-latest"]  # alias: Google tự trỏ tới bản mới nhất
 
 from src.state import get_data
 
