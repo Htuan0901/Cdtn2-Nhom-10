@@ -23,7 +23,7 @@ chatbot.set_data(li, hn, fc_result=st.session_state.get("fc_result"), salary_bun
 # ---------------- Thanh cài đặt ----------------
 with st.sidebar:
     st.divider()
-    st.markdown("**✨ Cài đặt Trợ lý AI**")
+    st.markdown("**:material/auto_awesome: Cài đặt Trợ lý AI**")
     env_model = get_gemini_model()
     options = MODELS if env_model in MODELS else [env_model] + MODELS
     model = st.selectbox("Model Gemini", options, index=options.index(env_model))
@@ -32,11 +32,11 @@ with st.sidebar:
     use_search = st.toggle("Tìm kiếm Google", False,
                            help="Dùng Google Search cho câu hỏi thời sự/ngoài dữ liệu. Khi bật, AI sẽ không gọi công cụ dữ liệu.")
     temp = st.slider("Độ sáng tạo (temperature)", 0.0, 1.5, 0.7, 0.1)
-    with st.expander("🔑 Nhập API key tạm thời"):
+    with st.expander("Nhập API key tạm thời", icon=":material/key:"):
         k = st.text_input("GEMINI_API_KEY", type="password", value=st.session_state.get("gemini_key_override", ""),
                           help="Chỉ lưu trong phiên hiện tại. Để lưu lâu dài, điền vào file .env")
         st.session_state["gemini_key_override"] = k
-    if st.button("🗑️ Cuộc trò chuyện mới", width="stretch"):
+    if st.button("Cuộc trò chuyện mới", icon=":material/add_comment:", width="stretch"):
         st.session_state["messages"] = []
         st.rerun()
 
@@ -52,26 +52,26 @@ if quota_out:
 
 # ---------------- Màn hình chào kiểu Gemini ----------------
 if not msgs:
-    st.markdown('<div class="gemini-hello">Xin chào, bạn 👋</div>', unsafe_allow_html=True)
+    st.markdown('<div class="gemini-hello">Xin chào, bạn</div>', unsafe_allow_html=True)
     st.markdown('<div class="gemini-sub">Hôm nay tôi có thể giúp gì cho bạn?</div>', unsafe_allow_html=True)
     if li is not None:
         st.markdown('<div class="suggest-note">Gợi ý câu hỏi</div>', unsafe_allow_html=True)
         sugg = [
-            ("📊", "Tóm tắt những insight quan trọng nhất về thị trường tuyển dụng CNTT trong dữ liệu"),
-            ("🧩", "Top 10 kỹ năng cho vị trí Data Engineer là gì?"),
-            ("💵", "So sánh lương trung vị của Python, Java, Go và JavaScript"),
-            ("📈", "Kỹ năng nào tăng và giảm mạnh nhất từ 2018 đến 2023?"),
-            ("🗺️", "Bang nào trả lương cao nhất cho Software Engineer?"),
-            ("🎓", "Sinh viên năm cuối nên học kỹ năng gì để dễ xin việc nhất?"),
+            (":material/insights:", "Tóm tắt những insight quan trọng nhất về thị trường tuyển dụng CNTT trong dữ liệu"),
+            (":material/extension:", "Top 10 kỹ năng cho vị trí Data Engineer là gì?"),
+            (":material/payments:", "So sánh lương trung vị của Python, Java, Go và JavaScript"),
+            (":material/trending_up:", "Kỹ năng nào tăng và giảm mạnh nhất từ 2018 đến 2023?"),
+            (":material/map:", "Bang nào trả lương cao nhất cho Software Engineer?"),
+            (":material/school:", "Sinh viên năm cuối nên học kỹ năng gì để dễ xin việc nhất?"),
         ]
     else:
         st.info("Mẹo: tải và làm sạch dữ liệu trước để Trợ lý AI có thể trả lời câu hỏi về dữ liệu của bạn. "
                 "Bạn vẫn có thể hỏi các câu hỏi chung ngay bây giờ.")
         sugg = [
-            ("💡", "Dự báo chuỗi thời gian là gì? Giải thích Holt-Winters thật dễ hiểu"),
-            ("🧪", "Gợi ý cấu trúc báo cáo đồ án khoa học dữ liệu"),
-            ("🐍", "Viết code pandas đếm số tin tuyển dụng theo tháng"),
-            ("🌏", "Kể cho tôi 3 xu hướng tuyển dụng CNTT nổi bật hiện nay"),
+            (":material/lightbulb:", "Dự báo chuỗi thời gian là gì? Giải thích Holt-Winters thật dễ hiểu"),
+            (":material/science:", "Gợi ý cấu trúc báo cáo đồ án khoa học dữ liệu"),
+            (":material/code:", "Viết code pandas đếm số tin tuyển dụng theo tháng"),
+            (":material/public:", "Kể cho tôi 3 xu hướng tuyển dụng CNTT nổi bật hiện nay"),
         ]
     cols = st.columns(2)
     for i, (ic, q) in enumerate(sugg):
@@ -107,7 +107,7 @@ if not api_key and not quota_out:
 <b>Chưa có Gemini API key.</b> Câu hỏi định lượng về bộ dữ liệu phân tích vẫn được trả lời (chế độ offline); các câu hỏi khác cần API key:<br>
 1. Lấy key miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.<br>
 2. Mở file <code>.env</code> trong thư mục dự án, điền: <code>GEMINI_API_KEY=key_cua_ban</code> rồi lưu file.<br>
-3. Tải lại trang (F5). Hoặc dán key tạm thời vào ô <b>🔑 Nhập API key tạm thời</b> ở thanh bên.
+3. Tải lại trang (F5). Hoặc dán key tạm thời vào ô <b>Nhập API key tạm thời</b> ở thanh bên.
 </div>""", unsafe_allow_html=True)
 
 if st.session_state.get("chat_error"):

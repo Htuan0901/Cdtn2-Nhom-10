@@ -35,8 +35,8 @@ def get_data(stop: bool = True):
             set_data(li, hn, log, "Dữ liệu đã xử lý sẵn (data/processed)")
     if st.session_state.get("li") is None:
         if stop:
-            st.info("📥 Chưa có dữ liệu. Vào **Nhập dữ liệu** để chạy pipeline từ 2 file Kaggle.")
-            st.page_link("views/upload.py", label="➡️ Đi tới Nhập dữ liệu", icon="📥")
+            st.info("Chưa có dữ liệu. Vào **Nhập dữ liệu** để chạy pipeline từ 2 file Kaggle.", icon=":material/upload_file:")
+            st.page_link("views/upload.py", label="Đi tới Nhập dữ liệu", icon=":material/arrow_forward:")
             st.stop()
         return None, None, None
     return st.session_state["li"], st.session_state["hn"], st.session_state.get("clean_log")

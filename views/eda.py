@@ -7,10 +7,10 @@ import streamlit as st
 
 from src.pipeline import EXP_ORDER, explode_skills
 from src.skills import SKILL_GROUP
-from src.ui import SEQ_BLUE, SERIES, fmt_int, fmt_pct, fmt_usd, kpi_cards, page_header, style_fig
+from src.ui import SEQ_BLUE, SERIES, fmt_int, fmt_pct, fmt_usd, hico, kpi_cards, page_header, style_fig
 from src.state import get_data
 
-page_header("🔎", "Phân tích khám phá (EDA)", "Kỹ năng/công nghệ phổ biến, mức lương theo vị trí và kinh nghiệm, phân bố theo khu vực.")
+page_header("chart", "Phân tích khám phá (EDA)", "Kỹ năng/công nghệ phổ biến, mức lương theo vị trí và kinh nghiệm, phân bố theo khu vực.")
 
 li, hn, _ = get_data()
 sal = li[li["salary_usd"].notna()]
@@ -40,10 +40,11 @@ ins = [
     f"so với **{len(hn[hn['month'].dt.year == 2018]) / 12:.0f} tin/tháng** năm 2018.",
 ]
 ins = [re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", i) for i in ins]
-st.markdown('<div class="card"><h4>💡 Insight nổi bật</h4>' + "".join(f"<div>• {i}</div>" for i in ins) + "</div>",
+st.markdown(f'<div class="card"><h4>{hico("sparkle")}Insight nổi bật</h4>' + "".join(f"<div>• {i}</div>" for i in ins) + "</div>",
             unsafe_allow_html=True)
 
-t1, t2, t3, t4, t5 = st.tabs(["🧩 Kỹ năng", "💵 Lương", "🗺️ Khu vực", "👔 Vị trí & cấp bậc", "🟧 Hacker News"])
+t1, t2, t3, t4, t5 = st.tabs([":material/extension: Kỹ năng", ":material/payments: Lương", ":material/map: Khu vực",
+                                 ":material/badge: Vị trí & cấp bậc", ":material/forum: Hacker News"])
 
 with t1:
     c1, c2 = st.columns([1.3, 1])

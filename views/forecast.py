@@ -8,19 +8,19 @@ from src.pipeline import explode_skills
 from src.state import get_data
 from src.ui import SEQ_BLUE, SERIES, fmt_int, kpi_cards, page_header, style_fig
 
-page_header("📈", "Xu hướng & dự báo", "Phân tích xu hướng kỹ năng theo giai đoạn và dự báo nhu cầu tuyển dụng theo tháng "
+page_header("trend", "Xu hướng & dự báo", "Phân tích xu hướng kỹ năng theo giai đoạn và dự báo nhu cầu tuyển dụng theo tháng "
             "(Hacker News 2018–2023). Mô hình được so sánh với baseline bằng MAE/RMSE/MAPE.")
 
 _, hn, _ = get_data()
 
 
-@st.cache_data(show_spinner="Đang huấn luyện và kiểm định 9 mô hình (ARIMA/SARIMA mất vài giây)…")
+@st.cache_data(show_spinner="Đang kiểm định 9 mô hình trên 4 mốc rolling-origin rồi đánh giá test (ARIMA/SARIMA mất vài chục giây)…")
 def _cached_backtest(series: pd.Series, h: int):
     return fc.evaluate_models(series, h)
 
 skill_counts = explode_skills(hn)["skill"].value_counts()
 
-tab_trend, tab_fc = st.tabs(["📊 Phân tích xu hướng theo giai đoạn", "🔮 Dự báo theo tháng"])
+tab_trend, tab_fc = st.tabs([":material/stacked_line_chart: Phân tích xu hướng theo giai đoạn", ":material/timeline: Dự báo theo tháng"])
 
 # ============================ XU HƯỚNG ============================
 with tab_trend:
@@ -59,7 +59,7 @@ with tab_trend:
                     title="Bản đồ nhiệt: % tin nhắc tới 20 kỹ năng phổ biến nhất theo năm (2023: 6 tháng đầu)",
                     labels=dict(color="%", x="Năm", y=""))
     st.plotly_chart(style_fig(fig, 620), width="stretch")
-    with st.expander("📋 Bảng xếp hạng xu hướng đầy đủ"):
+    with st.expander("Bảng xếp hạng xu hướng đầy đủ", icon=":material/leaderboard:"):
         st.dataframe(rank, width="stretch", hide_index=True)
 
 # ============================ DỰ BÁO ============================
@@ -77,7 +77,7 @@ with tab_fc:
     s = fc.monthly_series(hn, skill, metric)
     unit = "số tin" if metric == "count" else "% tin"
 
-    with st.expander("ℹ️ Các mô hình được so sánh", expanded=False):
+    with st.expander("Các mô hình được so sánh", icon=":material/info:", expanded=False):
         st.markdown("\n".join(f"- **{k}**: {v}" for k, v in fc.MODEL_INFO.items()))
 
     evaluation = _cached_backtest(s, h)
@@ -86,14 +86,15 @@ with tab_fc:
     base_rmse = res.loc[res["Mô hình"] == "Naive (baseline)", "RMSE"].iloc[0]
     best_row = res[res["Mô hình"] == best].iloc[0]
     st.session_state["fc_result"] = {"target": target, "unit": unit, "h": h, "results": res, "best": best,
-                                     "validation_results": evaluation["validation_table"]}
+                                     "validation_results": evaluation["validation_table"],
+                                     "selection_rule": evaluation["selection_rule"]}
 
     kpi_cards([
         ("Độ dài chuỗi", f"{len(s)} tháng", f"{s.index[0]:%m/%Y} – {s.index[-1]:%m/%Y}"),
         ("Train / Val / Test", f"{len(evaluation['train'])} / {len(evaluation['validation'])} / {h}", "chia theo thời gian"),
-        ("Mô hình tốt nhất", best, "chọn bằng RMSE validation"),
-        ("RMSE tốt nhất", f"{best_row['RMSE']:.2f}", f"Baseline: {base_rmse:.2f}"),
-        ("Cải thiện so với baseline", f"{best_row.get('Cải thiện RMSE so với baseline (%)', 0):.1f}%", "", "up"
+        ("Mô hình được chọn", best, f"rolling-origin {evaluation['n_origins']} mốc trên validation"),
+        ("RMSE test của mô hình đã chọn", f"{best_row['RMSE']:.2f}", f"Naive: {base_rmse:.2f}"),
+        ("Cải thiện trên test so với Naive", f"{best_row.get('Cải thiện RMSE so với baseline (%)', 0):.1f}%", "", "up"
          if best_row.get("Cải thiện RMSE so với baseline (%)", 0) > 0 else "down"),
     ])
 
@@ -105,30 +106,48 @@ with tab_fc:
                                   color=SERIES[i % len(SERIES)]))
     fig.add_vrect(x0=preds.index[0] - pd.Timedelta(days=15), x1=preds.index[-1] + pd.Timedelta(days=15),
                   fillcolor="#f3f6fb", opacity=0.6, line_width=0, annotation_text="Tập test", annotation_position="top left")
+    vidx = evaluation["validation"].index
+    fig.add_vrect(x0=vidx[0] - pd.Timedelta(days=15), x1=vidx[-1] + pd.Timedelta(days=15),
+                  fillcolor="#fff4e0", opacity=0.6, line_width=0, annotation_text="Validation (chọn mô hình)",
+                  annotation_position="top left")
     fig.update_layout(title=f"Backtest: dự báo {h} tháng cuối – {target} ({unit})", yaxis_title=unit)
     st.plotly_chart(style_fig(fig, 430), width="stretch")
 
     show = res.copy()
-    st.caption("Mô hình tốt nhất được chọn bằng RMSE trên validation; bảng dưới chỉ đánh giá trên test, không dùng chọn lại. "
-               "Để dự báo tương lai, mô hình được huấn luyện lại trên toàn bộ chuỗi sau khi chốt đánh giá.")
-    with st.expander("✅ Kết quả chọn mô hình trên validation"):
-        st.dataframe(evaluation["validation_table"], width="stretch", hide_index=True)
-    st.markdown("##### 📋 Bảng so sánh mô hình trên tập test")
+    v = evaluation["validation"]
+    st.info(f"**Cách chọn mô hình:** vùng validation {v.index[0]:%m/%Y} – {v.index[-1]:%m/%Y} chia thành "
+            f"{evaluation['n_origins']} mốc × {evaluation['origin_step']} tháng; ở mỗi mốc mô hình học toàn bộ dữ liệu trước mốc "
+            f"rồi dự báo {evaluation['origin_step']} tháng tiếp theo. Chọn theo RMSE trung bình, có quy tắc tiết kiệm: "
+            f"mô hình khác Naive phải giảm RMSE ≥ {fc.NAIVE_MARGIN * 100:.0f}%. Kết quả: **{best}** – {evaluation['selection_rule']}. "
+            f"Tập test {evaluation['test'].index[0]:%m/%Y} – {evaluation['test'].index[-1]:%m/%Y} chỉ được dùng SAU khi đã chốt.")
+    st.markdown("##### :material/rule: Bước 1 – Chọn mô hình trên validation (rolling-origin)")
+    vt = evaluation["validation_table"]
+    st.dataframe(vt.style.format({"MAE": "{:.2f}", "RMSE": "{:.2f}", "MAPE (%)": "{:.1f}",
+                                  "Cải thiện RMSE so với baseline (%)": "{:+.1f}"})
+                 .highlight_min(subset=["RMSE"], color="#d9f2e6"), width="stretch", hide_index=True)
+    if evaluation["validation_skipped"]:
+        st.caption("Không xét (không chạy được ở mọi mốc): " +
+                   "; ".join(f"{k} – {v_}" for k, v_ in evaluation["validation_skipped"].items()))
+    st.markdown("##### :material/fact_check: Bước 2 – Đánh giá độc lập trên tập test (không dùng để chọn lại)")
     st.dataframe(show.style.format({"MAE": "{:.2f}", "RMSE": "{:.2f}", "MAPE (%)": "{:.1f}",
                                     "Cải thiện RMSE so với baseline (%)": "{:+.1f}",
-                                    "Validation RMSE": "{:.2f}", "Validation MAE": "{:.2f}"})
-                 .highlight_min(subset=["MAE", "RMSE", "MAPE (%)"], color="#d9f2e6"), width="stretch", hide_index=True)
+                                    "Validation RMSE": "{:.2f}", "Validation MAE": "{:.2f}"}),
+                 width="stretch", hide_index=True)
+    st.caption("Bảng test xếp theo RMSE validation và không tô màu giá trị nhỏ nhất, vì chọn lại theo test sẽ gây rò rỉ dữ liệu. "
+               "Mô hình có RMSE test thấp hơn mô hình được chọn là chuyện bình thường: test chỉ cho biết sai số thật khi triển khai. "
+               "Để dự báo tương lai, mô hình được chọn học lại trên toàn bộ chuỗi.")
 
-    with st.expander("🔁 Đánh giá cuốn chiếu (rolling origin) – ổn định hơn 1 lần chia"):
-        st.caption("Lặp lại việc dự báo 3 tháng tiếp theo tại 6 mốc thời gian khác nhau, rồi lấy trung bình chỉ số.")
+    with st.expander("Kiểm tra độ ổn định: rolling-origin 6 mốc (chỉ trên dữ liệu trước tập test)", icon=":material/autorenew:"):
+        st.caption("Lặp lại việc dự báo 3 tháng tiếp theo tại 6 mốc trước tập test, rồi lấy trung bình chỉ số. "
+                   "Bảng mang tính tham khảo, không thay đổi mô hình đã chọn.")
         if st.button("Chạy đánh giá cuốn chiếu"):
             with st.spinner("Đang chạy…"):
-                rb = fc.rolling_backtest(s, h=3, n_origins=6)
+                rb = fc.rolling_backtest(s, h=3, n_origins=6, exclude_last=h)
             st.caption("Mô hình không đủ điều kiện ở một mốc (vd SARIMA cần ≥ 36 tháng train) sẽ có số lần đánh giá ít hơn.")
             st.dataframe(rb.style.format({"MAE": "{:.2f}", "RMSE": "{:.2f}", "MAPE (%)": "{:.1f}"})
                          .highlight_min(subset=["MAE", "RMSE"], color="#d9f2e6"), width="stretch", hide_index=True)
 
-    st.markdown("##### 🔮 Dự báo tương lai")
+    st.markdown("##### :material/query_stats: Dự báo tương lai")
     model = st.selectbox("Mô hình dùng để dự báo", res["Mô hình"].tolist(), index=res["Mô hình"].tolist().index(best))
     resid = (preds["Thực tế"] - preds[model]).std() if model in preds else None
     f = fc.forecast(s, model, future, resid_std=resid)

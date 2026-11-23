@@ -44,32 +44,69 @@ def _make(model):
     return Pipeline([("pre", pre), ("model", model)])
 
 
-def salary_trend_table(li: pd.DataFrame, freq: str = "MS", min_posts: int = 5,
-                       roles: list[str] | None = None) -> pd.DataFrame:
-    """Trung vị lương (USD/năm) mỗi tháng/quý × vị trí, kèm cỡ mẫu.
+TREND_FREQS = {"MS": "Tháng", "QS": "Quý", "6MS": "Nửa năm", "YS": "Năm"}
+OVERALL_LABEL = "Tất cả vị trí"
 
-    Không tự suy diễn hoặc nội suy kỳ thiếu; kỳ có < min_posts được loại
-    để tránh trình bày một vài tin đăng như một xu hướng thị trường.
+
+def _period_start(dates: pd.Series, freq: str) -> pd.Series:
+    """Ngày đầu kỳ (tháng / quý / nửa năm / năm) – tính trực tiếp, không phụ thuộc mốc bắt đầu của dữ liệu."""
+    month = {"MS": dates.dt.month,
+             "QS": (dates.dt.month - 1) // 3 * 3 + 1,
+             "6MS": np.where(dates.dt.month <= 6, 1, 7),
+             "YS": 1}[freq]
+    return pd.to_datetime(pd.DataFrame({"year": dates.dt.year, "month": month, "day": 1}))
+
+
+def salary_trend_table(df: pd.DataFrame, freq: str = "MS", min_posts: int = 5,
+                       roles: list[str] | None = None, date_col: str = "listed_date",
+                       include_overall: bool = False) -> pd.DataFrame:
+    """Trung vị lương (USD/năm) theo kỳ × nhóm vị trí, kèm cỡ mẫu.
+
+    - date_col: "listed_date" cho LinkedIn (2024), "month" cho Hacker News (2018–2023).
+    - freq: MS (tháng), QS (quý), 6MS (nửa năm), YS (năm).
+    - include_overall: thêm đường "Tất cả vị trí" (trung vị của mọi tin có lương trong kỳ, không lọc theo roles).
+    Không nội suy kỳ thiếu; nhóm × kỳ có < min_posts tin bị loại để không trình bày vài tin lẻ như một xu hướng.
     """
-    if freq not in ("MS", "QS"):
-        raise ValueError("Chỉ hỗ trợ nhóm theo tháng (MS) hoặc quý (QS)")
+    if freq not in TREND_FREQS:
+        raise ValueError(f"freq phải là một trong {list(TREND_FREQS)}")
     if min_posts < 1:
         raise ValueError("min_posts cần >= 1")
+    if date_col not in df.columns:
+        raise ValueError(f"Không có cột thời gian '{date_col}'")
     cols = ["Kỳ", "Vị trí", "Lương trung vị (USD/năm)", "Số tin"]
-    d = li.loc[:, ["listed_date", "role", "salary_usd"]].copy()
-    d["listed_date"] = pd.to_datetime(d["listed_date"], errors="coerce")
+    d = df.loc[:, [date_col, "role", "salary_usd"]].copy()
+    d[date_col] = pd.to_datetime(d[date_col], errors="coerce")
     d["salary_usd"] = pd.to_numeric(d["salary_usd"], errors="coerce")
-    d = d.dropna(subset=["listed_date", "role", "salary_usd"])
+    d = d.dropna(subset=[date_col, "role", "salary_usd"])
     d = d[d["salary_usd"] > 0]
-    if roles is not None:
-        d = d[d["role"].isin(roles)]
     if d.empty:
         return pd.DataFrame(columns=cols)
-    out = (d.groupby([pd.Grouper(key="listed_date", freq=freq), "role"])["salary_usd"]
-           .agg(["median", "size"]).reset_index()
-           .rename(columns={"listed_date": "Kỳ", "role": "Vị trí",
-                            "median": "Lương trung vị (USD/năm)", "size": "Số tin"}))
+    d["Kỳ"] = _period_start(d[date_col], freq)
+    parts = []
+    by_role = d if roles is None else d[d["role"].isin(roles)]
+    if not by_role.empty:
+        parts.append(by_role.groupby(["Kỳ", "role"])["salary_usd"].agg(["median", "size"]).reset_index())
+    if include_overall:
+        parts.append(d.groupby("Kỳ")["salary_usd"].agg(["median", "size"]).reset_index().assign(role=OVERALL_LABEL))
+    if not parts:
+        return pd.DataFrame(columns=cols)
+    out = (pd.concat(parts, ignore_index=True)
+           .rename(columns={"role": "Vị trí", "median": "Lương trung vị (USD/năm)", "size": "Số tin"}))
     return out[out["Số tin"] >= min_posts].sort_values(["Kỳ", "Vị trí"]).reset_index(drop=True)[cols]
+
+
+def salary_trend_change(trend: pd.DataFrame) -> pd.DataFrame:
+    """Mỗi nhóm: lương trung vị kỳ đầu, kỳ cuối và % thay đổi (chỉ nhóm có ≥ 2 kỳ đủ mẫu)."""
+    rows = []
+    for role, g in trend.sort_values("Kỳ").groupby("Vị trí"):
+        if g["Kỳ"].nunique() < 2:
+            continue
+        first, last = g.iloc[0], g.iloc[-1]
+        rows.append({"Vị trí": role, "Kỳ đầu": first["Kỳ"], "Lương kỳ đầu": first["Lương trung vị (USD/năm)"],
+                     "Kỳ cuối": last["Kỳ"], "Lương kỳ cuối": last["Lương trung vị (USD/năm)"],
+                     "Thay đổi (%)": (last["Lương trung vị (USD/năm)"] / first["Lương trung vị (USD/năm)"] - 1) * 100,
+                     "Số kỳ": int(g["Kỳ"].nunique()), "Tổng số tin": int(g["Số tin"].sum())})
+    return pd.DataFrame(rows)
 
 
 def train_salary_models(li: pd.DataFrame, test_size: float = 0.2, seed: int = 42,
