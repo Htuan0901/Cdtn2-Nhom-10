@@ -98,7 +98,7 @@ if ws_df is not None and ws.get("meta"):
 if quota_out:
     st.warning(f"Bạn đã dùng hết {chat_limit} câu hỏi Gemini của phiên này (giới hạn để bảo vệ quota API key của nhóm). "
                "Câu hỏi định lượng về bộ dữ liệu phân tích vẫn được trả lời ở chế độ offline. Muốn hỏi tiếp với Gemini, "
-               "hãy dán API key của riêng bạn vào ô **🔑 Nhập API key tạm thời** ở thanh bên.")
+               "hãy dán API key của riêng bạn vào ô **Nhập API key tạm thời** ở thanh bên.")
 elif quota_left is not None and api_key:
     st.caption(f"Còn **{quota_left}/{chat_limit}** câu hỏi Gemini trong phiên này.")
 if not api_key and not quota_out:
@@ -146,7 +146,7 @@ if prompt:
                     results = json.loads(json.dumps(resp.tool_results, ensure_ascii=False, default=str))
                 elif quota_out:
                     answer = (f"Phiên này đã dùng hết **{chat_limit} câu hỏi Gemini**. Hãy dán API key của riêng bạn vào ô "
-                              "**🔑 Nhập API key tạm thời** ở thanh bên để hỏi tiếp. Câu hỏi định lượng về *bộ dữ liệu phân tích* "
+                              "**Nhập API key tạm thời** ở thanh bên để hỏi tiếp. Câu hỏi định lượng về *bộ dữ liệu phân tích* "
                               "vẫn được trả lời bằng số liệu tính trực tiếp.")
                 else:
                     answer = ("Câu hỏi này cần Gemini nhưng **chưa có API key**. Hãy điền `GEMINI_API_KEY` trong file `.env` "
