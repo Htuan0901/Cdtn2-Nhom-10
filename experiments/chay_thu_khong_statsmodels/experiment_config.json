@@ -1,0 +1,46 @@
+{
+  "statsmodels_installed": false,
+  "dataset": {
+    "hn_rows": 43160,
+    "hn_first_month": "2018-01-01",
+    "hn_last_month": "2023-06-01",
+    "linkedin_rows": 12099,
+    "linkedin_salary_rows": 3560,
+    "hn_salary_rows": 1067
+  },
+  "forecast": {
+    "selected_by": "RMSE trung bình rolling-origin trên validation + quy tắc tiết kiệm",
+    "naive_margin": 0.05,
+    "best": "Naive (baseline)",
+    "selection_rule": "mô hình tốt nhất khác Naive (Ridge + biến trễ) còn kém Naive 14.0% RMSE validation, chưa đạt ngưỡng giảm 5% ⇒ giữ Naive",
+    "n_origins": 4,
+    "origin_step_months": 3,
+    "train_months_first_origin": 48,
+    "validation_months": 12,
+    "test_months": 6,
+    "validation_start": "2022-01-01",
+    "validation_end": "2022-12-01",
+    "test_start": "2023-01-01",
+    "test_end": "2023-06-01",
+    "skipped_validation": {
+      "Holt (damped)": "mốc 01/2022: No module named 'statsmodels'",
+      "Holt-Winters": "mốc 01/2022: No module named 'statsmodels'",
+      "ARIMA (chọn theo AIC)": "mốc 01/2022: No module named 'statsmodels'",
+      "SARIMA (mùa vụ 12)": "mốc 01/2022: No module named 'statsmodels'"
+    },
+    "skipped_test": {
+      "Holt (damped)": "No module named 'statsmodels'",
+      "Holt-Winters": "No module named 'statsmodels'",
+      "ARIMA (chọn theo AIC)": "No module named 'statsmodels'",
+      "SARIMA (mùa vụ 12)": "No module named 'statsmodels'"
+    }
+  },
+  "salary": {
+    "selected_by": "validation MAE",
+    "best": "Random Forest",
+    "n_train": 2136,
+    "n_validation": 712,
+    "n_test": 712,
+    "seed": 42
+  }
+}

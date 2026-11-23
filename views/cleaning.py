@@ -5,7 +5,7 @@ import streamlit as st
 from src.state import get_data
 from src.ui import SERIES, fmt_int, fmt_pct, kpi_cards, page_header, style_fig
 
-page_header("🧹", "Làm sạch dữ liệu", "Nhật ký từng bước xử lý: số dòng trước/sau, lý do loại bỏ, kiểm tra chất lượng sau làm sạch.")
+page_header("clean", "Làm sạch dữ liệu", "Nhật ký từng bước xử lý: số dòng trước/sau, lý do loại bỏ, kiểm tra chất lượng sau làm sạch.")
 
 li, hn, log = get_data()
 st.page_link("views/cleaning_interactive.py", label="Làm sạch tương tác trên bộ dữ liệu phân tích (thiếu, trùng, ngoại lệ, chuẩn hóa, chuyển kiểu, nhật ký, hoàn tác)",
@@ -25,7 +25,7 @@ if log is None or log.empty:
 for src in log["Nguồn"].unique():
     lg = log[log["Nguồn"] == src].reset_index(drop=True)
     first, last = lg.iloc[0]["Trước"], lg.iloc[-1]["Sau"]
-    st.markdown(f"### {'🔗' if src == 'LinkedIn' else '🟧'} {src}")
+    st.markdown(f"### {':material/work:' if src == 'LinkedIn' else ':material/forum:'} {src}")
     kpi_cards([("Số dòng gốc", fmt_int(first)), ("Sau làm sạch", fmt_int(last)),
                ("Bị loại", fmt_int(first - last), fmt_pct((first - last) / first), "down"),
                ("Tỉ lệ giữ lại", fmt_pct(last / first))])
@@ -44,7 +44,7 @@ for src in log["Nguồn"].unique():
     st.dataframe(lg, width="stretch", hide_index=True,
                  column_config={c: st.column_config.NumberColumn(format="localized") for c in ["Trước", "Sau", "Bị loại"]})
 
-st.markdown("### ✅ Kiểm tra chất lượng sau làm sạch")
+st.markdown("### :material/verified: Kiểm tra chất lượng sau làm sạch")
 t1, t2 = st.tabs(["LinkedIn", "Hacker News"])
 
 
@@ -61,7 +61,7 @@ with t2:
     _quality(hn)
     st.caption("`salary_usd` của HN được tách từ nội dung tin bằng regex (ví dụ “$120k – $160k”), nên phần lớn là thiếu.")
 
-with st.expander("📖 Giải thích các quy tắc làm sạch"):
+with st.expander("Giải thích các quy tắc làm sạch", icon=":material/menu_book:"):
     st.markdown("""
 - **Lọc tin CNTT (LinkedIn):** giữ tin có tiêu đề chứa từ khóa CNTT (software, developer, data, cloud, devops, security, IT support…)
   **hoặc** được LinkedIn gắn nhãn chức năng *Information Technology*. Hacker News vốn là cộng đồng công nghệ nên giữ toàn bộ.

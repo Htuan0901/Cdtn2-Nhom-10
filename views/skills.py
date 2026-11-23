@@ -7,7 +7,7 @@ from src.skills import SKILL_GROUP, SKILLS, extract_skills, highlight_skills, sk
 from src.state import get_data
 from src.ui import SERIES, fmt_int, fmt_pct, kpi_cards, page_header, style_fig
 
-page_header("🧩", "Trích xuất kỹ năng", "Text mining dựa trên từ điển + biểu thức chính quy: nhận diện và chuẩn hóa tên kỹ năng/công nghệ "
+page_header("code", "Trích xuất kỹ năng", "Text mining dựa trên từ điển + biểu thức chính quy: nhận diện và chuẩn hóa tên kỹ năng/công nghệ "
             "từ mô tả công việc, tạo bảng đặc trưng (feature table).")
 
 li, hn, _ = get_data()
@@ -19,7 +19,8 @@ kpi_cards([
     ("TB kỹ năng/tin (HN)", f"{hn['n_skills'].mean():.1f}", fmt_pct((hn["n_skills"] > 0).mean()) + " tin có ≥1"),
 ])
 
-t1, t2, t3, t4 = st.tabs(["🧪 Thử trích xuất", "📚 Từ điển kỹ năng", "🧾 Bảng đặc trưng", "🔍 Tra cứu theo kỹ năng"])
+t1, t2, t3, t4 = st.tabs([":material/science: Thử trích xuất", ":material/menu_book: Từ điển kỹ năng",
+                         ":material/grid_on: Bảng đặc trưng", ":material/search: Tra cứu theo kỹ năng"])
 
 with t1:
     src = st.radio("Văn bản", ["Lấy ngẫu nhiên 1 tin LinkedIn", "Lấy ngẫu nhiên 1 tin Hacker News", "Tự nhập"], horizontal=True)
@@ -29,7 +30,7 @@ with t1:
                                   "Docker, k8s and Terraform. Experience with Postgres, Redis, Kafka and CI/CD (GitHub Actions) "
                                   "is a plus. Bonus: LLM / RAG experience.")
     else:
-        if st.button("🎲 Lấy tin khác") or "sample_seed" not in st.session_state:
+        if st.button("Lấy tin khác", icon=":material/shuffle:") or "sample_seed" not in st.session_state:
             st.session_state["sample_seed"] = int(pd.Timestamp.now().value % 100000)
         df = li if "LinkedIn" in src else hn
         row = df.sample(1, random_state=st.session_state["sample_seed"]).iloc[0]

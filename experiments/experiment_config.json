@@ -1,19 +1,24 @@
 {
+  "statsmodels_installed": true,
   "dataset": {
     "hn_rows": 43160,
     "hn_first_month": "2018-01-01",
     "hn_last_month": "2023-06-01",
     "linkedin_rows": 12099,
-    "linkedin_salary_rows": 3560
+    "linkedin_salary_rows": 3560,
+    "hn_salary_rows": 1067
   },
   "forecast": {
-    "selected_by": "validation RMSE",
-    "best": "SARIMA (mùa vụ 12)",
-    "train_months": 54,
-    "validation_months": 6,
+    "selected_by": "RMSE trung bình rolling-origin trên validation + quy tắc tiết kiệm",
+    "naive_margin": 0.05,
+    "best": "Naive (baseline)",
+    "selection_rule": "mô hình tốt nhất khác Naive (Holt (damped)) còn kém Naive 9.4% RMSE validation, chưa đạt ngưỡng giảm 5% ⇒ giữ Naive",
+    "n_origins": 4,
+    "origin_step_months": 3,
+    "train_months_first_origin": 48,
+    "validation_months": 12,
     "test_months": 6,
-    "train_end": "2022-06-01",
-    "validation_start": "2022-07-01",
+    "validation_start": "2022-01-01",
     "validation_end": "2022-12-01",
     "test_start": "2023-01-01",
     "test_end": "2023-06-01",
