@@ -116,6 +116,34 @@ def xu_huong_ky_nang(skill: str = "", freq: str = "Y") -> dict:
             "ghi_chu": "Năm 2023 chỉ có dữ liệu tới tháng 6."}
 
 
+def xu_huong_luong(role: str = "", freq: str = "Y", min_posts: int = 10) -> dict:
+    """Xu hướng lương trung vị (USD/năm) theo thời gian trên Hacker News 2018–2023 (tin có ghi khoảng lương).
+    role rỗng = tất cả vị trí; có role = lọc theo nhóm vị trí (vd 'Software Engineer', 'Backend / Full-stack').
+    freq: 'Y' (năm), 'H' (nửa năm), 'Q' (quý). Chỉ giữ kỳ có ít nhất min_posts tin."""
+    from .salary_model import OVERALL_LABEL, salary_trend_change, salary_trend_table
+    hn = _ds("hn")
+    hn = hn[hn["salary_usd"].notna()]
+    f = {"Y": "YS", "H": "6MS", "Q": "QS"}.get(freq.upper(), "YS")
+    roles = [r for r in hn["role"].dropna().unique() if role and role.lower() in str(r).lower()]
+    t = salary_trend_table(hn, f, max(1, int(min_posts)), roles if role else [], date_col="month",
+                           include_overall=not role)
+    if t.empty:
+        return {"loi": f"Không có kỳ nào đủ {min_posts} tin có lương cho '{role or 'tất cả vị trí'}'.",
+                "nhom_vi_tri_co_san": sorted(hn["role"].dropna().unique().tolist())}
+    fmt = "%Y" if f == "YS" else "%Y-%m"
+    rows = [{"ky": k.strftime(fmt), "vi_tri": v, "luong_trung_vi": round(float(m), 0), "so_tin": int(n)}
+            for k, v, m, n in t[["Kỳ", "Vị trí", "Lương trung vị (USD/năm)", "Số tin"]].itertuples(index=False)]
+    chg = salary_trend_change(t)
+    return {"nguon": "Hacker News 2018–2023, lương = trung điểm khoảng lương ghi trong tin",
+            "ket_qua": rows,
+            "thay_doi": [{"vi_tri": c["Vị trí"], "ky_dau": c["Kỳ đầu"].strftime(fmt), "luong_ky_dau": round(float(c["Lương kỳ đầu"])),
+                          "ky_cuoi": c["Kỳ cuối"].strftime(fmt), "luong_ky_cuoi": round(float(c["Lương kỳ cuối"])),
+                          "thay_doi_%": round(float(c["Thay đổi (%)"]), 1), "tong_so_tin": int(c["Tổng số tin"])}
+                         for _, c in chg.iterrows()],
+            "ghi_chu": "Năm 2023 chỉ có 6 tháng đầu. Đây là lương công bố trong tin, không phải lương thực nhận. "
+                       f"Nhóm {OVERALL_LABEL!r} là trung vị của mọi tin có lương."}
+
+
 def ky_nang_tang_giam(top_n: int = 10) -> dict:
     """Các kỹ năng tăng/giảm mạnh nhất về tỉ lệ % tin trên Hacker News giữa 2018–2019 và 2022–2023."""
     from .forecast import trend_ranking
@@ -156,15 +184,18 @@ def ket_qua_mo_hinh() -> dict:
     out = {}
     fc = _STATE.get("fc_result")
     if fc:
-        out["du_bao"] = {"chuoi": fc["target"], "don_vi": fc["unit"], "so_thang_test": fc["h"], "tot_nhat": fc["best"],
-                         "bang": _jsonable(fc["results"].round(3))}
+        out["du_bao"] = {"chuoi": fc["target"], "don_vi": fc["unit"], "so_thang_test": fc["h"], "mo_hinh_duoc_chon": fc["best"],
+                         "cach_chon": fc.get("selection_rule", "RMSE validation"),
+                         "bang_test": _jsonable(fc["results"].round(3)),
+                         "ghi_chu": "Mô hình được chọn bằng validation (rolling-origin), bảng test chỉ để báo cáo."}
     sb = _STATE.get("salary_bundle")
     if sb:
         out["luong"] = {"tot_nhat": sb["best"], "bang": _jsonable(sb["results"].round(3))}
     return out or {"thong_bao": "Người dùng chưa chạy mô hình nào trong phiên này."}
 
 
-DATA_TOOLS = [thong_tin_du_lieu, top_ky_nang, luong_theo_nhom, luong_theo_ky_nang, xu_huong_ky_nang, ky_nang_tang_giam,
+DATA_TOOLS = [thong_tin_du_lieu, top_ky_nang, luong_theo_nhom, luong_theo_ky_nang, xu_huong_ky_nang, xu_huong_luong,
+              ky_nang_tang_giam,
               tim_tin, dem_theo_cot, ket_qua_mo_hinh]
 
 
@@ -183,10 +214,18 @@ def build_data_context(li: pd.DataFrame, hn: pd.DataFrame) -> str:
              f"({hn['month'].nunique()} tháng); số tin/tháng cao nhất {hn.groupby('month').size().max()}, "
              f"tháng cuối {hn.groupby('month').size().iloc[-1]}.",
              "- Cột LinkedIn: " + ", ".join(li.columns), "- Cột HN: " + ", ".join(hn.columns)]
+    hs = hn.dropna(subset=["salary_usd"])
+    if len(hs):
+        by_year = hs.groupby(hs["month"].dt.year)["salary_usd"].median()
+        lines.append(f"- Xu hướng lương (HN, {len(hs):,} tin có ghi lương): trung vị "
+                     + ", ".join(f"{y}: {v / 1000:,.0f}k" for y, v in by_year.items())
+                     + " USD/năm (2023 chỉ 6 tháng đầu). Dùng hàm xu_huong_luong để xem theo vị trí.")
     fc = _STATE.get("fc_result")
     if fc:
-        r = fc["results"].iloc[0]
-        lines.append(f"- Mô hình dự báo tốt nhất cho '{fc['target']}': {r['Mô hình']} (RMSE={r['RMSE']:.2f}, MAE={r['MAE']:.2f}).")
+        res = fc["results"]
+        r = res[res["Mô hình"] == fc["best"]].iloc[0] if (res["Mô hình"] == fc["best"]).any() else res.iloc[0]
+        lines.append(f"- Mô hình dự báo được chọn (theo validation) cho '{fc['target']}': {r['Mô hình']} "
+                     f"(RMSE test={r['RMSE']:.2f}, MAE test={r['MAE']:.2f}).")
     sb = _STATE.get("salary_bundle")
     if sb:
         r = sb["results"][sb["results"]["Mô hình"] == sb["best"]].iloc[0]

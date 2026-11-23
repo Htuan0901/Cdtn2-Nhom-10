@@ -10,8 +10,9 @@ Mô hình (đều là thống kê/ML cơ bản, dễ giải thích – đúng ph
 - Hồi quy tuyến tính theo thời gian (Linear Trend) + biến mùa vụ (tháng).
 - Holt (làm trơn mũ có xu hướng, damped) và Holt-Winters (xu hướng + mùa vụ 12 tháng) – statsmodels.
 - Ridge hồi quy với biến trễ (lag 1, 2, 3, 12) – dự báo đệ quy.
-Đánh giá: chia train/validation/test theo thời gian, chỉ chọn mô hình bằng validation RMSE;
-chỉ số MAE/RMSE/MAPE báo cáo trên test độc lập; so sánh Naive.
+Đánh giá: chia train | validation | test theo thời gian. Chọn mô hình bằng RMSE trung bình
+rolling-origin trên vùng validation (4 mốc × 3 tháng, không chạm test) + quy tắc tiết kiệm so với Naive;
+MAE/RMSE/MAPE trên test chỉ để báo cáo sau khi đã chốt mô hình.
 """
 from __future__ import annotations
 
@@ -214,45 +215,97 @@ def _score_models(train: pd.Series, holdout: pd.Series, models: list[str]):
     return table, pd.DataFrame(preds, index=holdout.index), skipped
 
 
-def evaluate_models(s: pd.Series, h: int = 6, models: list[str] | None = None,
-                    validation_size: int | None = None) -> dict:
-    """Chọn trên validation, khóa lựa chọn, CHỈ SAU ĐÓ đánh giá trên test.
+# Quy tắc chọn mô hình – CỐ ĐỊNH TRƯỚC khi nhìn tập test, không chỉnh theo kết quả test.
+VALIDATION_MONTHS = 12   # vùng validation: 12 tháng ngay trước tập test
+ORIGIN_STEP = 3          # mỗi mốc rolling-origin dự báo 3 tháng → 12 / 3 = 4 mốc
+NAIVE_MARGIN = 0.05      # mô hình khác Naive phải giảm RMSE validation trung bình ≥ 5% mới được chọn (nguyên tắc tiết kiệm)
 
-    Cắt thời gian thành: train | validation | test, tất cả không chồng lấn.
-    Các mô hình được fit trên train để chọn bằng validation RMSE; sau khi
-    chọn xong, fit lại trên train+validation để đánh giá một lần ở test.
-    Bảng test của tất cả mô hình chỉ để so sánh/báo cáo, KHÔNG dùng chọn best.
+
+def evaluate_models(s: pd.Series, h: int = 6, models: list[str] | None = None,
+                    validation_size: int | None = None, origin_step: int | None = None,
+                    naive_margin: float = NAIVE_MARGIN) -> dict:
+    """Chọn mô hình bằng rolling-origin trên vùng validation, khóa lựa chọn, SAU ĐÓ mới đánh giá test.
+
+    Trục thời gian:  train ............ | validation (n mốc × step tháng) | test (h tháng cuối)
+    - Vùng validation chia thành n mốc liên tiếp. Ở mỗi mốc, mô hình học trên TẤT CẢ dữ liệu trước mốc
+      đó (cửa sổ mở rộng) rồi dự báo `step` tháng kế tiếp. Không mốc nào chạm vào tập test.
+    - Điểm chọn = RMSE trung bình qua các mốc. Mô hình phải chạy được ở mọi mốc mới được xét.
+    - Quy tắc tiết kiệm: chọn mô hình tốt nhất khác Naive chỉ khi nó giảm RMSE validation ≥ naive_margin
+      so với Naive; nếu không thì giữ Naive.
+    - Sau khi chốt, mọi mô hình được học lại trên train+validation và dự báo h tháng test một lần
+      để báo cáo MAE/RMSE/MAPE. Bảng test không dùng để chọn lại.
     """
     if not 1 <= h < len(s):
         raise ValueError("Số kỳ test không hợp lệ")
-    val_h = validation_size if validation_size is not None else h
-    if not isinstance(val_h, int) or val_h < 1 or len(s) - h - val_h < 3:
-        raise ValueError("Cần tối thiểu 3 kỳ train, 1 kỳ validation và 1 kỳ test")
+    span = VALIDATION_MONTHS if validation_size is None else validation_size
+    step = origin_step if origin_step is not None else min(ORIGIN_STEP, span)
+    if not isinstance(span, (int, np.integer)) or not isinstance(step, (int, np.integer)) or step < 1 or span < step:
+        raise ValueError("validation_size và origin_step phải là số nguyên dương, validation_size ≥ origin_step")
+    n_origins = int(span // step)
+    span = n_origins * step
+    if len(s) - h - span < 3:
+        raise ValueError("Cần tối thiểu 3 kỳ train trước vùng validation")
     names = list(dict.fromkeys(["Naive (baseline)"] + (list(MODELS) if models is None else list(models))))
     invalid = [x for x in names if x not in MODELS]
     if invalid:
         raise ValueError(f"Mô hình không hỗ trợ: {invalid}")
-    train = s.iloc[:-(h + val_h)]
-    validation = s.iloc[-(h + val_h):-h]
+
+    dev = s.iloc[:-h]                      # train + validation; tập test KHÔNG nằm trong dev
     test = s.iloc[-h:]
-    val_table, val_preds, val_skipped = _score_models(train, validation, names)
-    if val_table.empty:
+    first = len(dev) - span
+    detail, pred_parts, failed = [], [], {}
+    for i in range(n_origins):
+        start = first + i * step
+        tr, ho = dev.iloc[:start], dev.iloc[start:start + step]
+        table, preds, skipped = _score_models(tr, ho, names)
+        for name, why in skipped.items():
+            failed.setdefault(name, f"mốc {ho.index[0]:%m/%Y}: {why}")
+        if not table.empty:
+            detail.append(table.drop(columns=[c for c in table.columns if c.startswith("Cải thiện")])
+                          .assign(**{"Mốc": ho.index[0]}))
+        pred_parts.append(preds)
+    detail = pd.concat(detail, ignore_index=True) if detail else pd.DataFrame()
+    if detail.empty:
         raise ValueError("Không mô hình nào dự báo được trên validation")
-    # QUAN TRỌNG: best được tính TRƯỚC khi gọi đánh giá test.
-    best = str(val_table.iloc[0]["Mô hình"])
-    test_table, test_preds, test_skipped = _score_models(s.iloc[:-h], test, names)
-    # Thứ tự bảng test theo VALIDATION (không sắp theo điểm test như trước).
-    # Vẫn báo cáo đầy đủ MAE/RMSE thực tế của tất cả mô hình.
+    counts = detail.groupby("Mô hình").size()
+    complete = [m for m in names if counts.get(m, 0) == n_origins]
+    val_table = (detail[detail["Mô hình"].isin(complete)].groupby("Mô hình")[["MAE", "RMSE", "MAPE (%)"]].mean()
+                 .assign(**{"Số mốc": n_origins}).reset_index())
+    base = val_table.loc[val_table["Mô hình"] == "Naive (baseline)", "RMSE"]
+    base_rmse = float(base.iloc[0]) if len(base) else np.nan
+    if np.isfinite(base_rmse) and base_rmse > 0:
+        val_table["Cải thiện RMSE so với baseline (%)"] = (1 - val_table["RMSE"] / base_rmse) * 100
+    val_table = val_table.sort_values("RMSE", kind="stable").reset_index(drop=True)
+    val_preds = pd.concat(pred_parts)[["Thực tế"] + complete] if pred_parts else pd.DataFrame()
+
+    # ---- CHỐT mô hình ở đây, TRƯỚC khi đọc bất kỳ giá trị nào của tập test ----
+    others = val_table[val_table["Mô hình"] != "Naive (baseline)"]
+    best, rule = "Naive (baseline)", "Naive có RMSE validation thấp nhất"
+    if not np.isfinite(base_rmse):
+        best, rule = str(val_table.iloc[0]["Mô hình"]), "Naive không chạy được; chọn RMSE validation thấp nhất"
+    elif not others.empty:
+        cand = others.iloc[0]
+        gain = 1 - cand["RMSE"] / base_rmse if base_rmse > 0 else 0.0
+        if gain >= naive_margin:
+            best, rule = str(cand["Mô hình"]), f"giảm {gain * 100:.1f}% RMSE validation so với Naive (ngưỡng {naive_margin * 100:.0f}%)"
+        else:
+            how = (f"chỉ giảm {gain * 100:.1f}%" if gain > 0 else f"còn kém Naive {abs(gain) * 100:.1f}%")
+            rule = (f"mô hình tốt nhất khác Naive ({cand['Mô hình']}) {how} RMSE validation, "
+                    f"chưa đạt ngưỡng giảm {naive_margin * 100:.0f}% ⇒ giữ Naive")
+
+    test_table, test_preds, test_skipped = _score_models(dev, test, names)
     if not test_table.empty:
         val_scores = val_table.set_index("Mô hình")
         test_table["Validation RMSE"] = test_table["Mô hình"].map(val_scores["RMSE"])
         test_table["Validation MAE"] = test_table["Mô hình"].map(val_scores["MAE"])
-        test_table = test_table.sort_values("Validation RMSE", kind="stable").reset_index(drop=True)
-    return {"train": train, "validation": validation, "test": test,
-            "validation_size": val_h, "validation_table": val_table,
-            "validation_predictions": val_preds, "test_table": test_table,
-            "test_predictions": test_preds, "best": best,
-            "validation_skipped": val_skipped, "test_skipped": test_skipped}
+        test_table["Được chọn"] = test_table["Mô hình"].eq(best)
+        test_table = test_table.sort_values("Validation RMSE", kind="stable", na_position="last").reset_index(drop=True)
+    return {"train": dev.iloc[:first], "validation": dev.iloc[first:], "test": test,
+            "validation_size": span, "n_origins": n_origins, "origin_step": step,
+            "validation_table": val_table, "validation_detail": detail, "validation_predictions": val_preds,
+            "test_table": test_table, "test_predictions": test_preds, "best": best, "selection_rule": rule,
+            "validation_skipped": {k: v for k, v in failed.items() if k not in complete},
+            "test_skipped": test_skipped}
 
 
 def backtest(s: pd.Series, h: int = 6, models: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -267,11 +320,15 @@ def backtest(s: pd.Series, h: int = 6, models: list[str] | None = None) -> tuple
     return table, predictions
 
 
-def rolling_backtest(s: pd.Series, h: int = 3, n_origins: int = 6, models: list[str] | None = None) -> pd.DataFrame:
-    """Đánh giá rolling-origin với test không tràn vào tương lai từng mốc.
+def rolling_backtest(s: pd.Series, h: int = 3, n_origins: int = 6, models: list[str] | None = None,
+                     exclude_last: int = 0) -> pd.DataFrame:
+    """Đánh giá rolling-origin mô tả độ ổn định (nhiều mốc hơn vùng chọn mô hình).
 
-    Đây là bảng mô tả độ ổn định, không phải bảng chọn mô hình cuối cùng.
+    exclude_last: số kỳ cuối bị cắt bỏ trước khi đánh giá – truyền đúng số tháng test
+    để bảng này không bao giờ dùng tới tập test.
     """
+    if exclude_last:
+        s = s.iloc[:-exclude_last]
     out = []
     names = list(dict.fromkeys(["Naive (baseline)"] + (list(MODELS) if models is None else list(models))))
     for k in range(n_origins, 0, -1):

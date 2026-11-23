@@ -7,12 +7,12 @@ from src.skills import SKILL_GROUP
 from src.state import get_data
 from src.ui import SEQ_BLUE, SERIES, fmt_int, fmt_pct, fmt_usd, kpi_cards, page_header, style_fig
 
-page_header("📊", "Dashboard thị trường tuyển dụng CNTT", "Lọc theo vị trí, cấp bậc, khu vực, kỹ năng để xem bức tranh tổng thể.")
+page_header("dashboard", "Dashboard thị trường tuyển dụng CNTT", "Lọc theo vị trí, cấp bậc, khu vực, kỹ năng để xem bức tranh tổng thể.")
 
 li, hn, _ = get_data()
 
 with st.sidebar:
-    st.markdown("### 🎛️ Bộ lọc")
+    st.markdown("### :material/tune: Bộ lọc")
     roles = st.multiselect("Vị trí", li["role"].value_counts().index.tolist())
     exps = st.multiselect("Cấp bậc", [e for e in EXP_ORDER if e in li["experience"].unique()])
     states = st.multiselect("Bang (LinkedIn)", li["state"].value_counts().index.tolist())
@@ -88,6 +88,6 @@ fig = px.area(x=m.index, y=m.values, title="Số tin Hacker News mỗi tháng (t
               color_discrete_sequence=[SERIES[1]])
 st.plotly_chart(style_fig(fig, 320), width="stretch")
 
-st.markdown("##### 📄 Danh sách tin (LinkedIn)")
+st.markdown("##### :material/list_alt: Danh sách tin (LinkedIn)")
 st.dataframe(f[["title", "company_name", "role", "experience", "location", "salary_usd", "skills"]].head(500), width="stretch",
              hide_index=True, column_config={"salary_usd": st.column_config.NumberColumn("Lương (USD/năm)", format="$%,.0f")})

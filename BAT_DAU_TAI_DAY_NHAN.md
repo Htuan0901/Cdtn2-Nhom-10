@@ -2,13 +2,15 @@
 
 ## Nội dung đã hoàn thiện
 
-1. `src/forecast.py` và `src/analytics/forecasting/forecaster.py`: tách train / validation / test theo thời gian. Chọn mô hình bằng RMSE **validation**; test độc lập chỉ dùng để báo cáo MAE/RMSE, không xếp hạng lại mô hình dựa trên test. Bổ sung Holt vào dự báo tổng quát; xử lý kỳ thiếu theo hướng không nhìn tương lai.
-2. `src/salary_model.py` và `views/salary.py`: biểu đồ **trung vị lương theo tháng/quý và nhóm vị trí**, kèm số tin, bộ lọc và cảnh báo cỡ mẫu. Các mô hình Ridge, Random Forest, Gradient Boosting cũng được chọn bằng **validation MAE**, trước khi xem test.
-3. `tools/run_experiments.py` và `experiments/`: kết quả thực nghiệm trên dữ liệu đóng gói, gồm Bảng 4.2 (Naive/MA/Holt/ARIMA/SARIMA), Bảng 4.3 (Baseline/Ridge/Random Forest/Gradient Boosting), bảng validation, dự báo từng tháng và thống kê lương.
+1. `src/forecast.py` và `src/analytics/forecasting/forecaster.py`: tách train / validation / test theo thời gian. Chọn mô hình bằng **RMSE trung bình rolling-origin 4 mốc × 3 tháng trên validation** + quy tắc tiết kiệm (phải hơn Naive ≥ 5%); test độc lập chỉ dùng để báo cáo MAE/RMSE, không xếp hạng lại mô hình dựa trên test. Bổ sung Holt vào dự báo tổng quát; xử lý kỳ thiếu theo hướng không nhìn tương lai.
+2. `src/salary_model.py` và `views/salary.py`: biểu đồ **trung vị lương theo năm/nửa năm/quý và nhóm vị trí từ Hacker News 2018–2023** (mặc định) hoặc LinkedIn 2024, kèm đường tổng, số tin, ngưỡng mẫu và bảng % thay đổi. Các mô hình Ridge, Random Forest, Gradient Boosting cũng được chọn bằng **validation MAE**, trước khi xem test.
+3. `tools/run_experiments.py` và `experiments/`: kết quả thực nghiệm trên dữ liệu đóng gói, gồm Bảng 4.2 (đủ 9 mô hình như trong app), Bảng 4.3 (Baseline/Ridge/Random Forest/Gradient Boosting), bảng validation, dự báo từng tháng và thống kê lương.
 4. `tests/test_itjobtrend.py`: kiểm thử chống rò rỉ (đổi giá trị test không thay đổi lựa chọn mô hình), kiểm thử Holt, số liệu lương trung vị và xử lý chuỗi thiếu kỳ.
 5. Tài liệu hướng dẫn trình bày và giải thích mô hình: `docs/HUONG_DAN_GIAI_THICH_MODULE_NHAN.md`.
 
 Các module ML tổng quát, K-Means/PCA, Isolation Forest và các hàm phân tích của trợ lý AI được **giữ lại** vì nằm trong phần cần giải thích khi bảo vệ.
+
+**Việc phải làm trước khi đưa số vào báo cáo:** cài đủ thư viện rồi chạy `python tools/run_experiments.py`. Kết quả trong `docs/KET_QUA_THUC_NGHIEM_4_2_4_3.md` hiện là bản chạy thử trên máy không có statsmodels (thiếu Holt, Holt-Winters, ARIMA, SARIMA). Kết quả cũ theo 1 cửa sổ validation để tham khảo ở `experiments/cu_1_cua_so_validation/`.
 
 ## Cách chạy trên Windows (VS Code → Terminal)
 

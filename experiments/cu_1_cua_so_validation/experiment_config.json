@@ -1,0 +1,31 @@
+{
+  "dataset": {
+    "hn_rows": 43160,
+    "hn_first_month": "2018-01-01",
+    "hn_last_month": "2023-06-01",
+    "linkedin_rows": 12099,
+    "linkedin_salary_rows": 3560
+  },
+  "forecast": {
+    "selected_by": "validation RMSE",
+    "best": "SARIMA (mùa vụ 12)",
+    "train_months": 54,
+    "validation_months": 6,
+    "test_months": 6,
+    "train_end": "2022-06-01",
+    "validation_start": "2022-07-01",
+    "validation_end": "2022-12-01",
+    "test_start": "2023-01-01",
+    "test_end": "2023-06-01",
+    "skipped_validation": {},
+    "skipped_test": {}
+  },
+  "salary": {
+    "selected_by": "validation MAE",
+    "best": "Random Forest",
+    "n_train": 2136,
+    "n_validation": 712,
+    "n_test": 712,
+    "seed": 42
+  }
+}

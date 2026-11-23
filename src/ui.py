@@ -38,15 +38,16 @@ html, body, [class*="css"], .stMarkdown, .stText, button, input, textarea, selec
   font-family: 'Be Vietnam Pro', 'Segoe UI', sans-serif !important;
 }
 .block-container { padding-top: 2rem; padding-bottom: 3rem; max-width: 1280px; }
-[data-testid="stSidebar"] { background: linear-gradient(180deg,#f4f8ff 0%,#fbf7ff 100%); border-right: 1px solid #e8ecf5; }
+[data-testid="stSidebar"] { background: linear-gradient(180deg,#f2f7ff 0%,#eef8f5 100%); border-right: 1px solid #e3eaf4; }
+.h-ico { display:inline-flex; vertical-align:-3px; margin-right:6px; }
 
 .sidebar-brand .logo { width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
-  background: linear-gradient(135deg,#2a78d6,#6250d6); color:#fff; font-weight:800; font-size:18px; }
+  background: linear-gradient(135deg,#14213d,#2a78d6); color:#fff; font-weight:800; font-size:18px; }
 .sidebar-brand .name { font-weight:800; font-size:1.1rem; color:#1b1b1b; line-height:1.1 }
 .sidebar-brand .sub { font-size:.75rem; color:#6b6b6b }
 
 .page-hero { border-radius: 20px; padding: 1.4rem 1.6rem; margin-bottom: 1.2rem;
-  background: linear-gradient(120deg,#eaf2ff 0%,#f3eeff 55%,#fff4ee 100%); border: 1px solid #e6eaf3; }
+  background: linear-gradient(120deg,#e8f1ff 0%,#f2f7ff 55%,#e7f6f1 100%); border: 1px solid #dfe7f3; }
 .page-hero h1 { font-size: 1.75rem; font-weight: 800; margin: 0 0 .25rem 0; color:#14213d; }
 .page-hero p { margin: 0; color: #4a4f5c; font-size: .98rem; }
 .page-hero .icon { font-size: 1.8rem; margin-right: .4rem }
@@ -97,14 +98,16 @@ def inject_css():
     st.markdown(CSS + EXT_CSS, unsafe_allow_html=True)
 
 
-# Icon chuyên nghiệp (SVG) thay cho emoji ở tiêu đề trang
-_HERO_ICONS = {"🏠": "dashboard", "📥": "upload", "🧹": "clean", "🔎": "chart", "🧩": "code", "📊": "dashboard",
-               "📈": "trend", "💵": "money", "📤": "report", "✨": "chat"}
+def hico(name: str, size: int = 18, color: str = "#2a78d6") -> str:
+    """Icon SVG nét mảnh để chèn vào khối HTML (thay cho emoji)."""
+    from src.analytics.ui.components import icon as svg_icon
+    return f'<span class="h-ico">{svg_icon(name, size, color)}</span>'
 
 
 def page_header(icon: str, title: str, subtitle: str = ""):
+    """icon: tên biểu tượng SVG (dashboard, upload, clean, chart, code, trend, money, report, chat, ...)."""
     from src.analytics.ui.components import icon as svg_icon
-    name = _HERO_ICONS.get(icon, "chart")
+    name = icon
     st.markdown(
         f"""<div class="page-hero"><div class="hero-row"><div class="hero-ico">{svg_icon(name, 24, "#fff")}</div>
         <div><h1 style="margin:0">{html.escape(title)}</h1><p>{html.escape(subtitle)}</p></div></div></div>""",

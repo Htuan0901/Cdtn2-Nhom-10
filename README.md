@@ -1,4 +1,4 @@
-# 📈 ITJobTrend: Phân tích & dự báo xu hướng tuyển dụng ngành CNTT
+# ITJobTrend: Phân tích & dự báo xu hướng tuyển dụng ngành CNTT
 
 **Đồ án Chuyên đề tốt nghiệp 2, chuyên ngành Khoa học dữ liệu** · phiên bản 2.0 (gộp thêm các module phân tích tổng quát)
 
@@ -37,7 +37,7 @@ ITJobTrend/
 │   ├── salary_model.py     # Ridge / Random Forest / Gradient Boosting dự đoán lương
 │   ├── chatbot.py          # Trợ lý Gemini + 9 công cụ truy vấn dữ liệu
 │   ├── state.py, config.py, ui.py
-│   └── analytics/          # ★ Các module phân tích tổng quát (phiên bản 2.0)
+│   └── analytics/          # Các module phân tích tổng quát (phiên bản 2.0)
 │       ├── data/           #   loader (CSV/Parquet, encoding, dấu phân cách) · schema (nhận diện vai trò cột) · cleaning
 │       ├── domain/         #   jobs (lương VND, kinh nghiệm, 63 tỉnh, lọc CNTT) · skills (từ điển kỹ năng tiếng Việt)
 │       ├── analysis/       #   eda (thống kê, tương quan, diễn giải tự động) · algorithms_doc (cơ sở khoa học)
@@ -90,16 +90,16 @@ về bộ dữ liệu phân tích vẫn được trả lời bằng số liệu 
 
 | Bước | Trang | Nội dung |
 |---|---|---|
-| 1 | 🏠 Trang chủ | Bài toán, mục tiêu, yêu cầu chức năng, công nghệ, nguồn dữ liệu |
-| 2 | 📥 Nhập dữ liệu | Dữ liệu đã nạp sẵn; có thể chạy lại pipeline từ file zip Kaggle |
-| 3 | 🧹 Làm sạch dữ liệu | Biểu đồ thác nước số dòng qua từng bước, nhật ký, kiểm tra chất lượng |
-| 4 | 🔎 EDA | Insight tự động; kỹ năng hot, đồng xuất hiện; lương theo vị trí/cấp bậc/kỹ năng; bản đồ theo bang; HN theo tháng |
-| 5 | 🧩 Trích xuất kỹ năng | Thử trích xuất trên tin thật hoặc văn bản tự nhập (tô đậm kỹ năng), từ điển, bảng đặc trưng |
-| 6 | 📊 Dashboard | Lọc theo vị trí, cấp bậc, bang, kỹ năng, remote, giai đoạn |
-| 7 | 📈 Xu hướng & dự báo | Top kỹ năng tăng/giảm 2018–19 → 2022–23; chọn chuỗi, backtest 9 mô hình (gồm ARIMA, SARIMA) (MAE/RMSE/MAPE so với baseline), dự báo 3–18 tháng |
-| 8 | 💵 Dự đoán mức lương | So sánh 3 mô hình với baseline; **xu hướng lương trung vị theo tháng/quý và vị trí**; yếu tố ảnh hưởng; dự đoán thử |
-| 9 | ✨ Trợ lý AI | Hỏi “Kỹ năng nào tăng mạnh nhất?”, “Lương Data Engineer ở CA?”… |
-| 10 | 📤 Xuất kết quả & báo cáo | CSV dữ liệu sạch, bảng đặc trưng, kết quả dự báo, báo cáo Excel nhiều sheet, **báo cáo PDF** |
+| 1 | Trang chủ | Bài toán, mục tiêu, yêu cầu chức năng, công nghệ, nguồn dữ liệu |
+| 2 | Nhập dữ liệu | Dữ liệu đã nạp sẵn; có thể chạy lại pipeline từ file zip Kaggle |
+| 3 | Làm sạch dữ liệu | Biểu đồ thác nước số dòng qua từng bước, nhật ký, kiểm tra chất lượng |
+| 4 | EDA | Insight tự động; kỹ năng hot, đồng xuất hiện; lương theo vị trí/cấp bậc/kỹ năng; bản đồ theo bang; HN theo tháng |
+| 5 | Trích xuất kỹ năng | Thử trích xuất trên tin thật hoặc văn bản tự nhập (tô đậm kỹ năng), từ điển, bảng đặc trưng |
+| 6 | Dashboard | Lọc theo vị trí, cấp bậc, bang, kỹ năng, remote, giai đoạn |
+| 7 | Xu hướng & dự báo | Top kỹ năng tăng/giảm 2018–19 → 2022–23; chọn chuỗi, chọn 1 trong 9 mô hình (gồm Holt, ARIMA, SARIMA) bằng rolling-origin trên validation, đánh giá test độc lập so với Naive (MAE/RMSE/MAPE), dự báo 3–18 tháng |
+| 8 | Dự đoán mức lương | So sánh Ridge, Random Forest, Gradient Boosting với baseline; **xu hướng lương trung vị theo năm/nửa năm/quý × nhóm vị trí (Hacker News 2018–2023)**; yếu tố ảnh hưởng; dự đoán thử |
+| 9 | Trợ lý AI | Hỏi “Kỹ năng nào tăng mạnh nhất?”, “Lương Data Engineer ở CA?”… |
+| 10 | Xuất kết quả & báo cáo | CSV dữ liệu sạch, bảng đặc trưng, kết quả dự báo, báo cáo Excel nhiều sheet, **báo cáo PDF** |
 
 **Các trang mở rộng (phiên bản 2.0)** - làm việc trên *bộ dữ liệu phân tích* do bạn chọn:
 
@@ -126,19 +126,23 @@ có mục *Minh bạch tính toán*); câu hỏi về LinkedIn/HN, kiến thức
 - **Kỹ năng hot (LinkedIn):** Python, Agile/Scrum, SQL, AWS, Azure, Java. **Lương cao nhất:** nhóm Data Scientist/AI-ML; kỹ năng LLM/GenAI gắn với lương trung vị cao nhất.
 - **Xu hướng (HN, 2018–19 → 2022–23):** TypeScript tăng mạnh nhất (+17 điểm %), tiếp theo Rust, Terraform, GraphQL; JavaScript, Java, Docker, Angular, Python giảm tỉ lệ.
   Số tin/tháng giảm từ ~750 (2018) xuống ~420 (12 tháng gần nhất), phản ánh làn sóng cắt giảm nhân sự công nghệ 2022–2023.
-- **Dự báo số tin/tháng (train 54 / validation 6 / test 6):** SARIMA được chọn theo RMSE validation; trên test SARIMA RMSE 96,44 so với Naive 95,19. Holt trên test đạt RMSE 49,91 nhưng không được chọn lại dựa vào test. Xem số liệu đầy đủ trong `docs/KET_QUA_THUC_NGHIEM_4_2_4_3.md`.
-- **Mô hình lương (train 2136 / validation 712 / test 712):** Random Forest được chọn theo MAE validation, có MAE test 28.961 USD và R² test 0,4145 (Naive baseline trung vị MAE 39.185 USD).
+- **Dự báo số tin/tháng (train 01/2018–12/2021 · validation 01–12/2022 rolling-origin 4 mốc × 3 tháng · test 01–06/2023):** mô hình được chọn theo RMSE trung bình trên validation + quy tắc tiết kiệm 5% so với Naive. Kết quả test từng mô hình (không phụ thuộc cách chọn): Holt RMSE 49,91; Naive 95,19; SARIMA 96,44; ARIMA 110,26. **Chạy `python tools/run_experiments.py` (cần statsmodels) để có tên mô hình được chọn và bảng 4.2 đầy đủ 9 mô hình** trong `docs/KET_QUA_THUC_NGHIEM_4_2_4_3.md`.
+- **Mô hình lương (train 2136 / validation 712 / test 712):** Random Forest được chọn theo MAE validation, có MAE test ≈ 28.960 USD và R² test ≈ 0,415 (baseline trung vị MAE 39.185 USD).
+- **Xu hướng lương (Hacker News, tin có ghi khoảng lương):** trung vị tăng từ 125.000 USD (2018) lên 165.000 USD (6 tháng đầu 2023), +32%; Software Engineer +42%, Backend/Full-stack +36%.
 
 ## 4a. Thay đổi hoàn thiện yêu cầu (11/2026)
 
 - **Không rò rỉ dữ liệu khi chọn mô hình**: `src/forecast.py` và `src/analytics/forecasting/forecaster.py`
-  chia liên tục thành train → validation → test, xếp hạng theo **validation RMSE**, báo cáo test *sau* khi chốt mô hình.
+  chia liên tục thành train → validation → test, báo cáo test *sau* khi chốt mô hình. Trang Hacker News chọn mô hình bằng
+  **rolling-origin 4 mốc × 3 tháng** trên validation (RMSE trung bình) + quy tắc tiết kiệm (phải hơn Naive ≥ 5%);
+  module tổng quát dùng một cửa sổ validation vì dữ liệu tải lên thường ngắn.
   Điền kỳ thiếu numeric bằng **forward fill** (chỉ thông tin quá khứ); không nội suy xuyên tương lai.
-- **Biểu đồ lương**: `views/salary.py` và `src/salary_model.py`: tab **Xu hướng lương** dùng trung vị USD/năm
-  từng vị trí theo tháng/quý, hiển thị cả cỡ mẫu (n), ngưỡng tin tối thiểu. Dữ liệu lương chỉ tập trung Mar–Apr/2024;
-  không diễn giải là xu hướng dài hạn.
-- **Bảng 4.2 / 4.3**: `tools/run_experiments.py` chạy lại thí nghiệm, xuất các bảng vào `experiments/`
-  và văn bản để chèn báo cáo tại `docs/KET_QUA_THUC_NGHIEM_4_2_4_3.md`.
+- **Biểu đồ lương**: `views/salary.py` và `src/salary_model.py`: tab **Xu hướng lương** mặc định dùng **Hacker News
+  2018–2023** (theo năm / nửa năm / quý × nhóm vị trí, kèm đường tổng, số tin, ngưỡng mẫu và bảng % thay đổi);
+  nguồn LinkedIn (chỉ 03–04/2024) vẫn chọn được để đối chiếu nhưng không dùng kết luận xu hướng.
+- **Bảng 4.2 / 4.3**: `tools/run_experiments.py` chạy lại thí nghiệm với **đủ 9 mô hình** như trong app, xuất bảng CSV
+  và 2 hình PNG (dự báo test, xu hướng lương) vào `experiments/`, văn bản chèn báo cáo tại `docs/KET_QUA_THUC_NGHIEM_4_2_4_3.md`.
+  Script dừng nếu thiếu statsmodels để không sinh bảng thiếu Holt/ARIMA/SARIMA.
 - **Test mới**: `tests/test_itjobtrend.py` kiểm tra thay test không đổi model được chọn, kiểm tra tính nhân quả
   của xử lý chuỗi, tính đúng trung vị lương và kết quả Holt.
 - **Tài liệu bảo vệ**: `docs/HUONG_DAN_GIAI_THICH_MODULE_NHAN.md` ghi rõ cơ chế các mô hình, luồng công cụ AI và câu hỏi phản biện.

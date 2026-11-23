@@ -9,7 +9,7 @@ from src.pipeline import HN_FILE, LI_FILE, clean_hn, clean_linkedin, save_proces
 from src.state import get_data, set_data
 from src.ui import fmt_int, kpi_cards, page_header
 
-page_header("📥", "Nhập dữ liệu", "Nạp 2 bộ dữ liệu Kaggle và chạy pipeline làm sạch, chuẩn hóa, trích xuất kỹ năng.")
+page_header("upload", "Nhập dữ liệu", "Nạp 2 bộ dữ liệu Kaggle và chạy pipeline làm sạch, chuẩn hóa, trích xuất kỹ năng.")
 
 li, hn, log = get_data(stop=False)
 if li is not None:
@@ -38,7 +38,7 @@ def _run(li_src, hn_src, label):
                "Kết quả đã lưu vào data/processed để lần sau mở app là có ngay.")
 
 
-tab_path, tab_up = st.tabs(["📂 Đọc từ đường dẫn trên máy (khuyên dùng)", "⬆️ Tải file zip lên"])
+tab_path, tab_up = st.tabs([":material/folder_open: Đọc từ đường dẫn trên máy (khuyên dùng)", ":material/upload: Tải file zip lên"])
 with tab_path:
     st.markdown("Nhập đường dẫn tới **file zip tải từ Kaggle** hoặc **thư mục đã giải nén**. "
                 f"Mặc định app tìm trong `{RAW_DIR.relative_to(RAW_DIR.parent.parent)}/linkedin` và `.../hn`.")
@@ -47,7 +47,7 @@ with tab_path:
                          help=r"Ví dụ: C:\Users\ban\Downloads\archive.zip")
     p_hn = c2.text_input("Hacker News Who is hiring (chứa jobs_2018_2023.csv)", value=str(RAW_DIR / "hn"),
                          help=r"Ví dụ: C:\Users\ban\Downloads\archive (1).zip")
-    if st.button("⚙️ Chạy pipeline", type="primary"):
+    if st.button("Chạy pipeline", icon=":material/play_arrow:", type="primary"):
         a, b = Path(p_li.strip().strip('"')), Path(p_hn.strip().strip('"'))
         if not a.exists() or not b.exists():
             st.error("Không tìm thấy đường dẫn. Kiểm tra lại (có thể bấm chuột phải vào file → Copy as path).")
@@ -60,13 +60,13 @@ with tab_up:
     c1, c2 = st.columns(2)
     u_li = c1.file_uploader("archive.zip – LinkedIn", type=["zip"], key="u_li")
     u_hn = c2.file_uploader("archive (1).zip – Hacker News", type=["zip"], key="u_hn")
-    if st.button("⚙️ Chạy pipeline với file tải lên", type="primary", disabled=not (u_li and u_hn)):
+    if st.button("Chạy pipeline với file tải lên", icon=":material/play_arrow:", type="primary", disabled=not (u_li and u_hn)):
         with st.spinner("Đang xử lý…"):
             _run(u_li, u_hn, f"Tải lên: {u_li.name} + {u_hn.name}")
 
 li, hn, log = get_data(stop=False)
 if li is not None:
-    st.markdown("#### 👀 Xem nhanh dữ liệu đã xử lý")
+    st.markdown("#### :material/visibility: Xem nhanh dữ liệu đã xử lý")
     kpi_cards([
         ("LinkedIn – số tin CNTT", fmt_int(len(li))),
         ("LinkedIn – số công ty", fmt_int(li["company_name"].nunique())),

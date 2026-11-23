@@ -25,7 +25,7 @@ DIVERGING = [[0, "#e34948"], [0.5, "#f8fafc"], [1, "#2a78d6"]]
 CSS = f"""
 <style>
 .page-hero .hero-row {{ display:flex; align-items:center; gap:14px; }}
-.page-hero .hero-ico {{ width:44px; height:44px; border-radius:12px; background: linear-gradient(135deg,{BLUE},{VIOLET});
+.page-hero .hero-ico {{ width:44px; height:44px; border-radius:12px; background: linear-gradient(135deg,{NAVY},{BLUE});
     display:flex; align-items:center; justify-content:center; flex-shrink:0; }}
 .page-hero .badge {{ margin-left:auto; background:#fff; border:1px solid #d6e4fb; color:#1c5cab;
     padding:5px 12px; border-radius:999px; font-size:.78rem; font-weight:600; white-space:nowrap; }}
@@ -35,7 +35,7 @@ CSS = f"""
 .kpi .top {{ display:flex; align-items:center; justify-content:space-between; gap:6px; }}
 .kpi .ico {{ width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }}
 .section-title {{ display:flex; align-items:center; gap:10px; margin: 16px 0 8px 0; }}
-.section-title .bar {{ width:4px; height:20px; border-radius:4px; background: linear-gradient({BLUE}, {VIOLET}); }}
+.section-title .bar {{ width:4px; height:20px; border-radius:4px; background: linear-gradient({BLUE}, {TEAL}); }}
 .section-title h3 {{ margin:0; padding:0; font-size:1.05rem; font-weight:700; }}
 .section-title span {{ color:{MUTED}; font-size:.82rem; }}
 .insight {{ background:#fff; border:1px solid {BORDER}; border-left:4px solid {BLUE}; border-radius:12px;

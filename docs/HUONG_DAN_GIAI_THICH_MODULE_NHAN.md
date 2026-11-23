@@ -4,16 +4,16 @@
 
 ## 1) Những gì đã sửa và lý do
 
-**Rò rỉ dữ liệu khi chọn mô hình:** Một sai lầm phổ biến là chạy Naive, Moving Average, Holt, ARIMA/SARIMA trên tập test rồi lấy mô hình có RMSE test nhỏ nhất. Khi đó test gián tiếp đã tham gia tối ưu, kết quả không còn là đánh giá độc lập. Bản sửa tách **train → validation → test** theo thời gian. Từng mô hình học train, dự báo validation; **chọn theo RMSE validation**. Sau khi khóa mô hình, fit lại trên **train+validation**, đánh giá các mô hình trên test và báo cáo kết quả. Sau khi đánh giá, có thể học lại toàn bộ chuỗi để dự báo các tháng chưa quan sát. Test không dùng chọn model, không dùng chọn siêu tham số hay thời lượng validation.
+**Rò rỉ dữ liệu khi chọn mô hình:** Một sai lầm phổ biến là chạy Naive, Moving Average, Holt, ARIMA/SARIMA trên tập test rồi lấy mô hình có RMSE test nhỏ nhất. Khi đó test gián tiếp đã tham gia tối ưu, kết quả không còn là đánh giá độc lập. Bản sửa tách **train → validation → test** theo thời gian. Vùng validation (12 tháng 01–12/2022 trên Hacker News) được đánh giá bằng **rolling-origin 4 mốc × 3 tháng**: ở mỗi mốc mô hình học toàn bộ dữ liệu trước mốc rồi dự báo 3 tháng kế tiếp; **chọn theo RMSE trung bình** của 4 mốc. Thêm **quy tắc tiết kiệm**: mô hình khác Naive phải giảm RMSE validation ≥ 5% (hằng `NAIVE_MARGIN`) mới được chọn, nếu không giữ Naive. Số mốc, độ dài mốc và ngưỡng 5% được cố định trong code (`VALIDATION_MONTHS`, `ORIGIN_STEP`, `NAIVE_MARGIN`) trước khi xem test. Lý do dùng nhiều mốc: với một cửa sổ 6 tháng duy nhất, lựa chọn phụ thuộc vào may rủi của đúng 6 tháng đó (bản trước chọn SARIMA nhưng trên test SARIMA còn kém Naive). Sau khi khóa mô hình, fit lại trên **train+validation**, đánh giá các mô hình trên test và báo cáo kết quả. Sau khi đánh giá, có thể học lại toàn bộ chuỗi để dự báo các tháng chưa quan sát. Test không dùng chọn model, không dùng chọn siêu tham số hay thời lượng validation.
 
 **Lưu ý về rò rỉ gián tiếp:** Cột số ở các kỳ không có quan sát của module dự báo tổng quát đã chuyển từ nội suy nhìn cả hai phía sang `forward fill`, chỉ lấy giá trị trước đó. Các thủ tục làm sạch mang tính thống kê (như biến đổi/chuẩn hóa theo toàn dữ liệu) cần được đưa vào pipeline fit trên train khi dùng ở bài toán ML có nhãn. Bản forecast hiện xử lý kỳ thiếu một cách nhân quả, không được dùng kết quả làm sạch bằng toàn bộ dữ liệu trước thời điểm test mà không kiểm soát.
 
-**Biểu đồ xu hướng lương:** Tab `Xu hướng lương` trên trang `Dự đoán mức lương` nhóm theo **ngày đăng → tháng hoặc quý** và **role**, tính `median(salary_usd)` (USD/năm). Chỉ dùng tin có lương dương hợp lệ, hiển thị số tin và lọc theo `min_posts`. Tập dữ liệu có số kỳ rất hạn chế (chủ yếu 03–04/2024) nên không được khẳng định lương đang tăng/giảm theo thời gian cho toàn thị trường.
+**Biểu đồ xu hướng lương:** Tab `Xu hướng lương` trên trang `Dự đoán mức lương` có 2 nguồn. **Mặc định là Hacker News 2018–2023** (1.067 tin ghi khoảng lương; lương = trung điểm khoảng, ví dụ $120k–$160k → 140k), gộp theo **năm / nửa năm / quý** và **nhóm vị trí**, tính `median(salary_usd)`, kèm đường "Tất cả vị trí" và bảng % thay đổi kỳ đầu → kỳ cuối. Nhóm × kỳ có ít hơn ngưỡng (mặc định 10 tin) bị loại. Kết quả: trung vị tổng tăng từ 125.000 USD (2018) lên 165.000 USD (6 tháng đầu 2023), +32%. Nguồn LinkedIn vẫn giữ để đối chiếu nhưng gần như chỉ có tin 04/2024 nên không dùng kết luận xu hướng. Hàm: `salary_trend_table(df, freq, min_posts, roles, date_col, include_overall)` và `salary_trend_change(trend)`.
 
 ## 2) Dự báo nhu cầu tuyển dụng – 2 module
 
-- `src/forecast.py`: module cho **Hacker News đã làm sạch**. `monthly_series()` đếm tin theo tháng; `evaluate_models()` trả train, validation, test, bảng RMSE/MAE, tên model được chọn; `backtest()` giữ giao diện API cũ; `forecast()` dự báo tương lai bằng toàn bộ chuỗi sau khi kết thúc đánh giá. `views/forecast.py` hiển thị tách validation/test.
-- `src/analytics/forecasting/forecaster.py`: module **tổng quát** cho dữ liệu được người dùng tải lên; `prepare_series()` chọn cột thời gian, gộp theo tần suất, bù kỳ thiếu; `check_eligibility()` kiểm tra tối thiểu số kỳ; `run_forecast()` chọn bằng validation và báo cáo test; `fc_naive`, `fc_moving_average`, `fc_holt`, `fc_arima` cài thuật toán. Trang: `src/analytics/ui/pages/forecast.py`.
+- `src/forecast.py`: module cho **Hacker News đã làm sạch**. `monthly_series()` đếm tin theo tháng; `evaluate_models()` chạy rolling-origin trên validation, chốt mô hình (`best`, `selection_rule`), rồi mới đánh giá test; trả về `validation_table` (RMSE TB), `validation_detail` (từng mốc), `test_table` (có cột `Được chọn`); `rolling_backtest(..., exclude_last=h)` là bảng tham khảo độ ổn định, luôn cắt bỏ tập test; `backtest()` giữ giao diện API cũ; `forecast()` dự báo tương lai bằng toàn bộ chuỗi sau khi kết thúc đánh giá. `views/forecast.py` hiển thị tách validation/test.
+- `src/analytics/forecasting/forecaster.py`: module **tổng quát** cho dữ liệu được người dùng tải lên; `prepare_series()` chọn cột thời gian, gộp theo tần suất, bù kỳ thiếu; `check_eligibility()` kiểm tra tối thiểu số kỳ; `run_forecast()` chọn bằng một cửa sổ validation rồi báo cáo test (dữ liệu tải lên thường ngắn, không đủ cho nhiều mốc rolling-origin); `fc_naive`, `fc_moving_average`, `fc_holt`, `fc_arima` cài thuật toán. Trang: `src/analytics/ui/pages/forecast.py`.
 
 | Thuật toán | Nguyên lý ngắn gọn | Điểm cần lưu ý |
 |---|---|---|
@@ -26,7 +26,7 @@
 | Holt-Winters | Làm trơn mũ có mức, xu hướng và mùa vụ | Hữu ích khi có mùa vụ rõ |
 | Ridge + lags | Dự báo từ trễ 1/2/3/12 và biến tháng, rồi lặp đệ quy | Cần chuỗi đủ dài để lập lags |
 
-**Thước đo:** `MAE = mean(|y−ŷ|)` (dễ đọc theo số tin), `RMSE = sqrt(mean((y−ŷ)²))` (nhạy với lỗi lớn); `MAPE` là sai số % và không phù hợp nếu y=0. Baseline Naive làm mốc so sánh. **Một mô hình có RMSE test thấp hơn nhưng chưa chắc được chọn** vì thứ tự đã khóa bằng validation; ví dụ Bảng 4.2 chọn SARIMA, mặc dù Holt có RMSE test thấp hơn.
+**Thước đo:** `MAE = mean(|y−ŷ|)` (dễ đọc theo số tin), `RMSE = sqrt(mean((y−ŷ)²))` (nhạy với lỗi lớn); `MAPE` là sai số % và không phù hợp nếu y=0. Baseline Naive làm mốc so sánh. **Một mô hình có RMSE test thấp hơn nhưng chưa chắc được chọn** vì lựa chọn đã khóa bằng validation. Lưu ý: kết quả test của từng mô hình KHÔNG phụ thuộc cách chọn (mô hình nào cũng học trên train+validation rồi dự báo 6 tháng test), nên số MAE/RMSE test của Holt, ARIMA, SARIMA giữ nguyên giữa bản cũ và bản mới; chỉ tên mô hình được chọn thay đổi.
 
 ## 3) Dự đoán lương – `src/salary_model.py`
 
@@ -72,13 +72,15 @@ Ví dụ demo: “Top 5 kỹ năng trên LinkedIn?” → lọc chuỗi kỹ nă
 
 **Q2. Validation và test khác gì?** Validation dùng chọn mô hình/siêu tham số; test đánh giá cuối khi lựa chọn đã khóa. Không được xem test để thay lựa chọn.
 
-**Q3. Tại sao SARIMA được chọn nhưng Holt lại test tốt hơn?** SARIMA có RMSE validation nhỏ nhất; test chỉ là kiểm tra độc lập. Chọn lại Holt bằng test sẽ gây selection leakage, mất tính khách quan.
+**Q3. Nếu mô hình khác có RMSE test thấp hơn mô hình được chọn thì sao?** Đó là chuyện bình thường: test chỉ đo sai số thật khi triển khai. Nếu đổi lựa chọn theo test thì test đã tham gia chọn mô hình (selection leakage) và con số báo cáo sẽ lạc quan giả tạo. Cách đúng là cải thiện quy trình chọn trên validation (bản này đã chuyển từ 1 cửa sổ sang rolling-origin 4 mốc) chứ không nhìn test.
+
+**Q3b. Vì sao ngưỡng 5% với Naive?** Nguyên tắc tiết kiệm: mô hình phức tạp hơn phải tốt hơn rõ rệt mới đáng dùng, vì chênh lệch nhỏ trên 12 tháng validation có thể chỉ là nhiễu. Ngưỡng đặt trước và cố định trong code, không chỉnh theo kết quả test.
 
 **Q4. MAPE có điểm yếu gì?** Chia cho y thực tế; khi y bằng hoặc gần 0 thì sai số tỷ lệ không ổn định hoặc vô nghĩa.
 
 **Q5. Vì sao dùng lương trung vị thay trung bình?** Lương thường lệch phải và có outlier; trung vị bền vững hơn với vài tin trả lương rất cao.
 
-**Q6. Biểu đồ lương nói gì?** Trung vị lương trong **tập tin công bố lương**, từng vị trí/kỳ. Dữ liệu chỉ vài kỳ và rất lệch về tháng 04/2024 nên không khẳng định xu hướng thị trường nhiều năm.
+**Q6. Biểu đồ lương nói gì?** Trung vị lương trong **các tin Hacker News có ghi khoảng lương**, theo năm và nhóm vị trí, 2018–2023: tăng khoảng 32% (125k → 165k USD). Giới hạn: chỉ 1.067 tin có lương (khoảng 2,5% số tin), là lương công bố chứ không phải lương thực nhận, 2023 chỉ có 6 tháng, một số nhóm/năm ít mẫu nên dao động (ví dụ Frontend 2020). Không dùng LinkedIn cho xu hướng vì gần như chỉ có 04/2024.
 
 **Q7. Ridge/RF/Gradient Boosting khác nhau thế nào?** Ridge giả định quan hệ tuyến tính và giảm overfit bằng L2; RF trung bình nhiều cây độc lập; GB học cây nối tiếp để sửa lỗi mô hình trước.
 
@@ -97,7 +99,8 @@ python -m venv .venv
 pip install -r requirements.txt
 python -m streamlit run app.py
 
-# Chạy lại số thực nghiệm (phát sinh file CSV trong experiments/)
+# Chạy lại số thực nghiệm (CSV + hình PNG trong experiments/, bảng tổng hợp trong docs/KET_QUA_THUC_NGHIEM_4_2_4_3.md)
+# Bắt buộc đã cài statsmodels, nếu không script sẽ dừng để tránh thiếu Holt/ARIMA/SARIMA
 python tools/run_experiments.py
 
 # Chạy tất cả test và test riêng phần Nhân
@@ -105,4 +108,4 @@ python -m pytest -q
 python -m pytest tests/test_itjobtrend.py -v
 ```
 
-Các màn hình demo: `Xu hướng & dự báo` → so sánh validation/test, `Dự báo tổng quát` → Naive/MA/Holt/ARIMA/SARIMA, `Dự đoán mức lương` → xu hướng lương theo vị trí và đánh giá Ridge/RF/GB, `Khai phá dữ liệu` → KMeans/PCA, `Phát hiện bất thường` → Isolation Forest, `Trợ lý AI` → công cụ tính theo dữ liệu.
+Các màn hình demo: `Xu hướng & dự báo` → so sánh validation/test, `Dự báo tổng quát` → Naive/MA/Holt/ARIMA/SARIMA, `Dự đoán mức lương` → tab Xu hướng lương (Hacker News theo năm) và đánh giá Ridge/RF/GB, `Khai phá dữ liệu` → KMeans/PCA, `Phát hiện bất thường` → Isolation Forest, `Trợ lý AI` → công cụ tính theo dữ liệu.

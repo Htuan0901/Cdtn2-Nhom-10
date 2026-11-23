@@ -2,9 +2,9 @@ import streamlit as st
 
 from src.skills import SKILL_NAMES
 from src.state import get_data
-from src.ui import fmt_int, kpi_cards, page_header
+from src.ui import fmt_int, hico, kpi_cards, page_header
 
-page_header("📈", "ITJobTrend – Phân tích & dự báo xu hướng tuyển dụng ngành CNTT",
+page_header("trend", "ITJobTrend – Phân tích & dự báo xu hướng tuyển dụng ngành CNTT",
             "Đồ án Chuyên đề tốt nghiệp 2 · Chuyên ngành Khoa học dữ liệu · Dữ liệu: LinkedIn Job Postings 2023–2024 "
             "và Hacker News “Who is hiring” 2018–2023 (Kaggle)")
 
@@ -20,25 +20,25 @@ if li is not None:
 
 c1, c2 = st.columns([1.35, 1])
 with c1:
-    st.markdown("""
+    st.markdown(f"""
 <div class="card">
-<h4>🎯 Bài toán</h4>
+<h4>{hico("briefcase")}Bài toán</h4>
 Thị trường tuyển dụng CNTT thay đổi rất nhanh: công nghệ mới (Cloud, AI/LLM…) xuất hiện, công nghệ cũ giảm dần.
 Sinh viên và nhà trường cần biết <b>kỹ năng nào đang được săn đón</b>, <b>mức lương theo từng vị trí</b> và
 <b>xu hướng sắp tới</b>. Đề tài thu thập dữ liệu tin tuyển dụng công khai, làm sạch, trích xuất kỹ năng từ mô tả công việc,
 phân tích và <b>dự báo xu hướng tuyển dụng theo thời gian</b>, trình bày qua dashboard trực quan.
 </div>
 <div class="card">
-<h4>📌 Mục tiêu (theo đề cương)</h4>
+<h4>{hico("check")}Mục tiêu (theo đề cương)</h4>
 <span class="pill">Thu thập & làm sạch minh bạch</span><span class="pill">EDA: kỹ năng hot, lương, khu vực</span>
 <span class="pill">Trích xuất kỹ năng (text mining)</span><span class="pill">Dự báo xu hướng theo thời gian</span>
 <span class="pill">So sánh với baseline (MAE/RMSE)</span><span class="pill">Dashboard tương tác</span><span class="pill">Trợ lý AI hỏi đáp</span>
 </div>
 """, unsafe_allow_html=True)
 with c2:
-    st.markdown("""
+    st.markdown(f"""
 <div class="card">
-<h4>🚀 Bắt đầu nhanh</h4>
+<h4>{hico("sparkle")}Bắt đầu nhanh</h4>
 <div class="step"><div class="num">1</div><div><b>Nhập dữ liệu</b><br><span style="color:#667085">Dữ liệu đã xử lý được nạp sẵn; có thể chạy lại pipeline từ file Kaggle</span></div></div>
 <div class="step"><div class="num">2</div><div><b>Làm sạch</b><br><span style="color:#667085">Xem nhật ký từng bước, số dòng trước/sau</span></div></div>
 <div class="step"><div class="num">3</div><div><b>EDA & trích xuất kỹ năng</b><br><span style="color:#667085">Kỹ năng hot, lương theo vị trí, khu vực</span></div></div>
@@ -46,23 +46,23 @@ with c2:
 <div class="step"><div class="num">5</div><div><b>Dashboard & Trợ lý AI</b><br><span style="color:#667085">Lọc tương tác, hỏi đáp bằng tiếng Việt</span></div></div>
 </div>
 """, unsafe_allow_html=True)
-    st.page_link("views/eda.py", label="Xem phân tích ngay", icon="🔎")
+    st.page_link("views/eda.py", label="Xem phân tích ngay", icon=":material/arrow_forward:")
 
-st.markdown("#### 🔁 Pipeline xử lý dữ liệu")
-st.markdown("""
+st.markdown("#### :material/account_tree: Pipeline xử lý dữ liệu")
+st.markdown(f"""
 <div class="pipeline">
-<span class="node">📥 Thu thập (Kaggle)</span><span class="arrow">→</span>
-<span class="node">🧹 Làm sạch & chuẩn hóa</span><span class="arrow">→</span>
-<span class="node">🧩 Trích xuất kỹ năng</span><span class="arrow">→</span>
-<span class="node">🔎 EDA</span><span class="arrow">→</span>
-<span class="node">📈 Chuỗi thời gian & dự báo</span><span class="arrow">→</span>
-<span class="node">💵 Mô hình lương</span><span class="arrow">→</span>
-<span class="node">📊 Dashboard</span><span class="arrow">→</span>
-<span class="node">✨ Trợ lý AI</span>
+<span class="node">{hico("upload", 15)}Thu thập (Kaggle)</span><span class="arrow">→</span>
+<span class="node">{hico("clean", 15)}Làm sạch & chuẩn hóa</span><span class="arrow">→</span>
+<span class="node">{hico("code", 15)}Trích xuất kỹ năng</span><span class="arrow">→</span>
+<span class="node">{hico("chart", 15)}EDA</span><span class="arrow">→</span>
+<span class="node">{hico("trend", 15)}Chuỗi thời gian & dự báo</span><span class="arrow">→</span>
+<span class="node">{hico("money", 15)}Mô hình lương</span><span class="arrow">→</span>
+<span class="node">{hico("dashboard", 15)}Dashboard</span><span class="arrow">→</span>
+<span class="node">{hico("chat", 15)}Trợ lý AI</span>
 </div>
 """, unsafe_allow_html=True)
 
-t1, t2, t3 = st.tabs(["📋 Yêu cầu chức năng", "🛠️ Công nghệ sử dụng", "📚 Về bộ dữ liệu"])
+t1, t2, t3 = st.tabs([":material/checklist: Yêu cầu chức năng", ":material/build: Công nghệ sử dụng", ":material/dataset: Về bộ dữ liệu"])
 with t1:
     st.markdown("""
 | Mã | Yêu cầu chức năng | Trang |
@@ -71,8 +71,8 @@ with t1:
 | FR-02 | Làm sạch: xóa trùng, xử lý thiếu, lọc tin CNTT, chuẩn hóa lương/địa điểm/kỹ năng; nhật ký trước/sau | Làm sạch dữ liệu |
 | FR-03 | EDA: kỹ năng phổ biến, lương theo vị trí/kinh nghiệm, phân bố theo khu vực | EDA |
 | FR-04 | Trích xuất kỹ năng/công nghệ từ mô tả công việc, bảng đặc trưng, thử với văn bản bất kỳ | Trích xuất kỹ năng |
-| FR-05 | Phân tích xu hướng theo giai đoạn và dự báo theo tháng; so sánh mô hình với baseline (MAE/RMSE/MAPE) | Xu hướng & dự báo |
-| FR-06 | Mô hình dự đoán mức lương theo vị trí, cấp bậc, kỹ năng | Dự đoán mức lương |
+| FR-05 | Phân tích xu hướng theo giai đoạn và dự báo theo tháng; chọn mô hình bằng rolling-origin trên validation, đánh giá test độc lập, so sánh baseline Naive (MAE/RMSE/MAPE) | Xu hướng & dự báo |
+| FR-06 | Xu hướng lương trung vị theo năm × nhóm vị trí (Hacker News 2018–2023); mô hình dự đoán mức lương theo vị trí, cấp bậc, kỹ năng | Dự đoán mức lương |
 | FR-07 | Dashboard tương tác có bộ lọc | Dashboard |
 | FR-08 | Trợ lý AI (Gemini) trả lời câu hỏi về dữ liệu & câu hỏi chung | Trợ lý AI |
 | FR-09 | Xuất dữ liệu sạch, bảng đặc trưng, kết quả dự báo (CSV/Excel), **báo cáo PDF** | Xuất kết quả & báo cáo |
