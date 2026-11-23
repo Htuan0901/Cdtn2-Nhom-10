@@ -2,12 +2,6 @@
 
 *Sinh tự động bởi `tools/run_experiments.py` từ dữ liệu trong `data/processed/`.*
 
-> **CẢNH BÁO:** máy chạy chưa cài statsmodels nên Holt, Holt-Winters, ARIMA, SARIMA bị bỏ qua. KHÔNG đưa bảng này vào báo cáo; cài statsmodels rồi chạy lại.
->
-> **Việc cần làm:** trên máy đã `pip install -r requirements.txt`, chạy `python tools/run_experiments.py`. Lệnh sẽ ghi đè file này bằng bảng đủ 9 mô hình và lưu CSV + hình vào `experiments/`.
->
-> **Tham khảo từ lần chạy trước (có statsmodels, file `experiments/cu_1_cua_so_validation/`):** kết quả TEST của từng mô hình không phụ thuộc cách chọn mô hình (mọi mô hình đều học trên 01/2018–12/2022 rồi dự báo 01–06/2023), nên các số test này vẫn đúng: Holt (damped) MAE 44,31 / RMSE 49,91; SARIMA MAE 90,39 / RMSE 96,44; ARIMA MAE 102,79 / RMSE 110,26. Chỉ cột RMSE validation và tên mô hình được chọn sẽ thay đổi khi chạy lại.
-
 ## 1. Quy trình đánh giá dự báo
 
 - Hacker News: 43,160 tin, 66 tháng (01/2018–06/2023).
@@ -16,19 +10,21 @@
 - Test 01/2023–06/2023 (6 tháng): mọi mô hình học lại trên train+validation, dự báo một lần, chỉ để báo cáo. Không chọn lại theo test.
 - Bậc ARIMA chọn theo AIC trên dữ liệu huấn luyện của từng lượt, không dùng điểm test.
 
-**Mô hình được chọn:** Naive (baseline) – mô hình tốt nhất khác Naive (Ridge + biến trễ) còn kém Naive 14.0% RMSE validation, chưa đạt ngưỡng giảm 5% ⇒ giữ Naive.
+**Mô hình được chọn:** Naive (baseline) – mô hình tốt nhất khác Naive (Holt (damped)) còn kém Naive 9.4% RMSE validation, chưa đạt ngưỡng giảm 5% ⇒ giữ Naive.
 
 ## Bảng 4.2 – So sánh mô hình dự báo số tin tuyển dụng
 
 | Mô hình | RMSE validation (TB) | MAE test | RMSE test | Cải thiện RMSE test so với Naive |
 |---|---:|---:|---:|---:|
 | Naive (baseline) **(được chọn)** | 69.19 | 87.00 | 95.19 | 0.0% |
+| Holt (damped) | 75.68 | 44.31 | 49.91 | 47.6% |
 | Ridge + biến trễ | 78.85 | 138.32 | 146.71 | -54.1% |
+| Holt-Winters | 81.24 | 68.04 | 73.11 | 23.2% |
+| ARIMA (chọn theo AIC) | 86.57 | 102.79 | 110.26 | -15.8% |
 | Trung bình trượt 3T | 90.06 | 84.33 | 92.76 | 2.6% |
+| SARIMA (mùa vụ 12) | 112.08 | 90.39 | 96.44 | -1.3% |
 | Hồi quy xu hướng + mùa vụ | 139.16 | 304.15 | 305.91 | -221.4% |
 | Seasonal Naive | 248.31 | 346.17 | 347.01 | -264.5% |
-
-Không xét: Holt (damped) (mốc 01/2022: No module named 'statsmodels'); Holt-Winters (mốc 01/2022: No module named 'statsmodels'); ARIMA (chọn theo AIC) (mốc 01/2022: No module named 'statsmodels'); SARIMA (mùa vụ 12) (mốc 01/2022: No module named 'statsmodels')
 
 ## Bảng 4.3 – So sánh mô hình dự đoán lương (LinkedIn)
 
@@ -57,8 +53,8 @@ LinkedIn chỉ có lương trong 01–04/2024 (gần hết ở 04/2024) nên ch�
 
 ## Hình cho báo cáo
 
-- `experiments/chay_thu_khong_statsmodels/hinh_du_bao_test.png` – chuỗi số tin, vùng validation/test và dự báo của mô hình được chọn.
-- `experiments/chay_thu_khong_statsmodels/hinh_xu_huong_luong.png` – lương trung vị theo năm và nhóm vị trí.
+- `experiments/hinh_du_bao_test.png` – chuỗi số tin, vùng validation/test và dự báo của mô hình được chọn.
+- `experiments/hinh_xu_huong_luong.png` – lương trung vị theo năm và nhóm vị trí.
 
 ## Tái lập
 
